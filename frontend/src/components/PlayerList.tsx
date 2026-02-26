@@ -1,3 +1,4 @@
+import { Card, SectionTitle, Badge } from './ui';
 
 interface Player {
   id: string;
@@ -10,54 +11,47 @@ interface Player {
 interface PlayerListProps {
   players: Player[];
   currentPlayerId?: string;
+  compact?: boolean;
 }
 
-export function PlayerList({ players, currentPlayerId }: PlayerListProps) {
+export function PlayerList({ players, currentPlayerId, compact = false }: PlayerListProps) {
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
-      <h2 className="text-xl font-semibold mb-4 text-gray-800">
-        Players ({players.length})
-      </h2>
-      
+    <Card padding={compact ? 'sm' : 'md'}>
+      <SectionTitle count={players.length}>Players</SectionTitle>
+
       {players.length === 0 ? (
-        <p className="text-gray-500 text-center py-4">No players yet</p>
+        <p className="text-sm text-gray-400 text-center py-3">No players yet</p>
       ) : (
-        <ul className="space-y-2">
-          {players.map((player) => (
-            <li
-              key={player.id}
-              className={`flex items-center justify-between p-3 rounded-lg ${
-                player.id === currentPlayerId
-                  ? 'bg-blue-50 border-2 border-blue-300'
-                  : 'bg-gray-50'
-              }`}
-            >
-              <div className="flex items-center space-x-3">
-                <div
-                  className={`w-3 h-3 rounded-full ${
-                    player.isHost ? 'bg-yellow-500' : 'bg-green-500'
-                  }`}
-                />
-                <span className="font-medium text-gray-800">
-                  {player.nickname}
-                  {player.id === currentPlayerId && ' (You)'}
-                </span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <span className="text-indigo-600 font-semibold">
+        <ul className={`space-y-1 overflow-y-auto pr-0.5 ${compact ? 'max-h-[30dvh]' : 'max-h-[40dvh]'}`}>
+          {players.map((player) => {
+            const isYou = player.id === currentPlayerId;
+            return (
+              <li
+                key={player.id}
+                className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-sm ${
+                  isYou ? 'bg-indigo-50' : 'hover:bg-gray-50'
+                }`}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <div
+                    className={`w-2 h-2 rounded-full shrink-0 ${
+                      player.isHost ? 'bg-amber-400' : 'bg-emerald-400'
+                    }`}
+                  />
+                  <span className={`truncate ${isYou ? 'font-semibold text-indigo-700' : 'text-gray-700'}`}>
+                    {player.nickname}
+                    {isYou && <span className="text-gray-400 font-normal ml-1">(You)</span>}
+                  </span>
+                  {player.isHost && <Badge variant="yellow">Host</Badge>}
+                </div>
+                <span className="text-xs font-medium text-gray-500 tabular-nums shrink-0 ml-2">
                   {player.totalScore ?? 0} pts
                 </span>
-                {player.isHost && (
-                  <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full font-semibold">
-                    HOST
-                  </span>
-                )}
-              </div>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
       )}
-    </div>
+    </Card>
   );
 }
-

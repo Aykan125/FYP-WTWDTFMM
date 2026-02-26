@@ -1,20 +1,20 @@
 import { useState, useEffect } from 'react';
+import { Routes, Route, useNavigate, Navigate } from 'react-router-dom';
 import { HostLobby } from './components/HostLobby';
 import { JoinLobby } from './components/JoinLobby';
+import { JoinByLinkPage } from './pages/JoinByLinkPage';
 import { useSocket } from './hooks/useSocket';
-
-type Screen = 'home' | 'host' | 'join';
+import { Card, Button } from './components/ui';
 
 const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
 
 function App() {
-  const [screen, setScreen] = useState<Screen>('home');
+  const navigate = useNavigate();
   const [nickname, setNickname] = useState('');
-  const [joinCodeInput, setJoinCodeInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [initialized, setInitialized] = useState(false);
 
-  // Session data stored in localStorage
   const [sessionData, setSessionData] = useState<{
     joinCode: string;
     playerId: string;
@@ -29,25 +29,30 @@ function App() {
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
-        setSessionData(parsed);
-        // Automatically rejoin the lobby
-        if (parsed.joinCode && parsed.playerId) {
+        // Only auto-rejoin if user is NOT on a /join/:joinCode page
+        // (so clicking a new invite link isn't blocked by an old session)
+        const isJoinPage = window.location.pathname.startsWith('/join/');
+        if (!isJoinPage && parsed.joinCode && parsed.playerId) {
+          setSessionData(parsed);
           joinLobby(parsed.joinCode, parsed.playerId);
-          setScreen(parsed.isHost ? 'host' : 'join');
+          navigate(`/lobby/${parsed.joinCode}`, { replace: true });
         }
       } catch (err) {
         console.error('Failed to parse stored session:', err);
         localStorage.removeItem('futureHeadlines_session');
       }
     }
+    setInitialized(true);
   }, []);
 
-  // Save session to localStorage whenever it changes
+  // Persist sessionData to localStorage
   useEffect(() => {
     if (sessionData) {
       localStorage.setItem('futureHeadlines_session', JSON.stringify(sessionData));
     }
   }, [sessionData]);
+
+  // ─── Handlers ───
 
   const handleCreateSession = async () => {
     if (!nickname.trim()) {
@@ -61,9 +66,7 @@ function App() {
     try {
       const response = await fetch(`${API_URL}/api/sessions`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ hostNickname: nickname.trim() }),
       });
 
@@ -81,10 +84,9 @@ function App() {
 
       setSessionData(newSessionData);
 
-      // Join the socket.io lobby
       const joined = await joinLobby(data.session.joinCode, data.player.id);
       if (joined) {
-        setScreen('host');
+        navigate(`/lobby/${data.session.joinCode}`);
       } else {
         setError('Failed to connect to lobby');
       }
@@ -95,28 +97,16 @@ function App() {
     }
   };
 
-  const handleJoinSession = async () => {
-    if (!nickname.trim()) {
-      setError('Please enter a nickname');
-      return;
-    }
-
-    if (!joinCodeInput.trim()) {
-      setError('Please enter a join code');
-      return;
-    }
-
+  const handleJoinSession = async (joinCode: string, playerNickname: string) => {
     setLoading(true);
     setError('');
 
     try {
-      const code = joinCodeInput.trim().toUpperCase();
+      const code = joinCode.trim().toUpperCase();
       const response = await fetch(`${API_URL}/api/sessions/${code}/join`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ nickname: nickname.trim() }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nickname: playerNickname.trim() }),
       });
 
       if (!response.ok) {
@@ -133,10 +123,9 @@ function App() {
 
       setSessionData(newSessionData);
 
-      // Join the socket.io lobby
       const joined = await joinLobby(data.session.joinCode, data.player.id);
       if (joined) {
-        setScreen('join');
+        navigate(`/lobby/${data.session.joinCode}`);
       } else {
         setError('Failed to connect to lobby');
       }
@@ -151,148 +140,57 @@ function App() {
     leaveLobby();
     setSessionData(null);
     localStorage.removeItem('futureHeadlines_session');
-    setScreen('home');
+    navigate('/');
     setNickname('');
-    setJoinCodeInput('');
     setError('');
   };
 
   const handleStartGame = async () => {
     if (!sessionData) return;
-
     const success = await startGame(sessionData.joinCode);
-    if (success) {
-      // Game started - could navigate to game screen
-      console.log('Game started!');
-    }
+    if (success) console.log('Game started!');
   };
 
   const handleSubmitHeadline = async (headline: string) => {
-    if (!sessionData) {
-      return { success: false, error: 'Not connected to a session' };
-    }
+    if (!sessionData) return { success: false, error: 'Not connected to a session' };
     return submitHeadline(sessionData.joinCode, headline);
   };
 
-  // Load headlines when the phase changes to PLAYING
+  // Load headlines when phase changes to PLAYING
   useEffect(() => {
     if (sessionState?.phase === 'PLAYING' && sessionData?.joinCode) {
       loadHeadlines(sessionData.joinCode);
     }
   }, [sessionState?.phase, sessionData?.joinCode, loadHeadlines]);
 
-  // Request round summary on reconnect during BREAK phase
+  // Request round summary on reconnect during BREAK
   useEffect(() => {
     if (sessionState?.phase === 'BREAK' && sessionData?.joinCode && !roundSummary) {
       requestSummary(sessionData.joinCode, sessionState.currentRound);
     }
   }, [sessionState?.phase, sessionState?.currentRound, sessionData?.joinCode, roundSummary, requestSummary]);
 
-  // Home screen
-  if (screen === 'home') {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-100 flex items-center justify-center p-4">
-        <div className="max-w-md w-full space-y-8">
-          {/* Title */}
-          <div className="text-center">
-            <h1 className="text-5xl font-bold text-gray-900 mb-2">
-              Future Headlines
-            </h1>
-            <p className="text-gray-600">Create or join a game session</p>
-          </div>
-
-          {/* Connection Status */}
-          <div className="bg-white rounded-lg shadow-md p-4 text-center">
-            <div className="flex items-center justify-center space-x-2">
-              <div
-                className={`w-3 h-3 rounded-full ${
-                  connected ? 'bg-green-500' : 'bg-red-500'
-                }`}
-              />
-              <span className="text-sm text-gray-700">
-                {connected ? 'Connected' : 'Disconnected'}
-              </span>
-            </div>
-          </div>
-
-          {/* Nickname Input */}
-          <div className="bg-white rounded-lg shadow-md p-6 space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Your Nickname
-              </label>
-              <input
-                type="text"
-                value={nickname}
-                onChange={(e) => setNickname(e.target.value)}
-                placeholder="Enter your nickname"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                maxLength={20}
-              />
-            </div>
-
-            {/* Error Message */}
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-                {error}
-              </div>
-            )}
-
-            {/* Create Session Button */}
-            <button
-              onClick={handleCreateSession}
-              disabled={loading || !connected}
-              className="w-full px-6 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white rounded-lg font-semibold transition-colors"
-            >
-              {loading ? 'Creating...' : 'Create New Session'}
-            </button>
-
-            {/* Divider */}
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">OR</span>
-              </div>
-            </div>
-
-            {/* Join Code Input */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Join Code
-              </label>
-              <input
-                type="text"
-                value={joinCodeInput}
-                onChange={(e) => setJoinCodeInput(e.target.value.toUpperCase())}
-                placeholder="Enter 6-character code"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent font-mono text-center text-lg tracking-wider"
-                maxLength={6}
-              />
-            </div>
-
-            {/* Join Session Button */}
-            <button
-              onClick={handleJoinSession}
-              disabled={loading || !connected}
-              className="w-full px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg font-semibold transition-colors"
-            >
-              {loading ? 'Joining...' : 'Join Session'}
-            </button>
-          </div>
-        </div>
+  // ─── Loading spinner (shared) ───
+  const loadingScreen = (
+    <div className="h-[100dvh] overflow-hidden bg-gradient-to-b from-gray-50 to-gray-100/80 flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-2 border-gray-200 border-t-indigo-500 mx-auto mb-3" />
+        <p className="text-sm text-gray-400">Loading...</p>
       </div>
-    );
-  }
+    </div>
+  );
 
-  // Host lobby screen
-  if (screen === 'host' && sessionState) {
-    return (
+  // ─── Lobby element (host or joiner) ───
+  const lobbyElement = !initialized ? (
+    loadingScreen
+  ) : !sessionData ? (
+    <Navigate to="/" replace />
+  ) : sessionState ? (
+    sessionData.isHost ? (
       <HostLobby
         joinCode={sessionState.joinCode}
         players={sessionState.players}
-        currentPlayerId={sessionData?.playerId || ''}
+        currentPlayerId={sessionData.playerId}
         phase={sessionState.phase}
         currentRound={sessionState.currentRound}
         maxRounds={sessionState.maxRounds}
@@ -301,23 +199,19 @@ function App() {
         phaseEndsAt={sessionState.phaseEndsAt}
         serverNow={sessionState.serverNow}
         inGameNow={sessionState.inGameNow}
+        timelineSpeedRatio={sessionState.timelineSpeedRatio}
         headlines={headlines}
         roundSummary={roundSummary}
         onStartGame={handleStartGame}
         onBack={handleBack}
         onSubmitHeadline={handleSubmitHeadline}
       />
-    );
-  }
-
-  // Join lobby screen
-  if (screen === 'join' && sessionState) {
-    return (
+    ) : (
       <JoinLobby
         joinCode={sessionState.joinCode}
         players={sessionState.players}
-        currentPlayerId={sessionData?.playerId || ''}
-        isHost={sessionData?.isHost || false}
+        currentPlayerId={sessionData.playerId}
+        isHost={sessionData.isHost}
         phase={sessionState.phase}
         currentRound={sessionState.currentRound}
         maxRounds={sessionState.maxRounds}
@@ -326,24 +220,96 @@ function App() {
         phaseEndsAt={sessionState.phaseEndsAt}
         serverNow={sessionState.serverNow}
         inGameNow={sessionState.inGameNow}
+        timelineSpeedRatio={sessionState.timelineSpeedRatio}
         headlines={headlines}
         roundSummary={roundSummary}
         onBack={handleBack}
         onSubmitHeadline={handleSubmitHeadline}
       />
-    );
-  }
+    )
+  ) : (
+    loadingScreen
+  );
 
-  // Loading state
+  // ─── Routes ───
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-        <p className="text-gray-600">Loading...</p>
-      </div>
-    </div>
+    <Routes>
+      {/* Home – create a new game */}
+      <Route path="/" element={
+        <div className="h-[100dvh] overflow-hidden bg-gradient-to-b from-gray-50 to-gray-100/80 flex items-center justify-center p-4">
+          <div className="max-w-sm w-full space-y-6">
+            {/* Title */}
+            <div className="text-center space-y-1">
+              <h1 className="text-4xl font-bold text-gray-900">Future Headlines</h1>
+              <p className="text-sm text-gray-500">Create a game and invite players with a link</p>
+            </div>
+
+            {/* Connection status */}
+            <div className="flex items-center justify-center gap-2">
+              <div className={`w-2 h-2 rounded-full ${connected ? 'bg-emerald-400' : 'bg-red-400'}`} />
+              <span className="text-xs text-gray-500">{connected ? 'Connected' : 'Disconnected'}</span>
+            </div>
+
+            {/* Main card */}
+            <Card padding="lg" className="space-y-5">
+              {/* Nickname */}
+              <div>
+                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5">
+                  Nickname
+                </label>
+                <input
+                  type="text"
+                  value={nickname}
+                  onChange={(e) => setNickname(e.target.value)}
+                  placeholder="Enter your nickname"
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent bg-gray-50"
+                  maxLength={20}
+                  onKeyDown={(e) => e.key === 'Enter' && !loading && handleCreateSession()}
+                />
+              </div>
+
+              {/* Error */}
+              {error && (
+                <div className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">
+                  {error}
+                </div>
+              )}
+
+              {/* Create */}
+              <Button
+                fullWidth
+                size="lg"
+                onClick={handleCreateSession}
+                disabled={loading || !connected}
+              >
+                {loading ? 'Creating...' : 'Create New Game'}
+              </Button>
+            </Card>
+
+            <p className="text-xs text-center text-gray-400">
+              After creating, you'll get an invite link to share with players.
+            </p>
+          </div>
+        </div>
+      } />
+
+      {/* Join by link */}
+      <Route path="/join/:joinCode" element={
+        <JoinByLinkPage
+          connected={connected}
+          loading={loading}
+          error={error}
+          onJoinSession={handleJoinSession}
+        />
+      } />
+
+      {/* Lobby / Game */}
+      <Route path="/lobby/:joinCode" element={lobbyElement} />
+
+      {/* Catch-all redirect */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
 
 export default App;
-
