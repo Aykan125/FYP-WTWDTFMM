@@ -14,14 +14,8 @@ ALTER TABLE game_session_headlines
     ADD COLUMN band4_headline TEXT,  -- possible
     ADD COLUMN band5_headline TEXT,  -- preposterous
 
-    -- Plausibility assessment from LLM
-    ADD COLUMN plausibility_level INT CHECK (plausibility_level >= 1 AND plausibility_level <= 5),
+    -- Plausibility assessment from LLM (plausibility_level already added in 004_scoring.sql)
     ADD COLUMN plausibility_rationale TEXT,
-
-    -- Top 3 planet classifications
-    ADD COLUMN planet_1 VARCHAR(64),
-    ADD COLUMN planet_2 VARCHAR(64),
-    ADD COLUMN planet_3 VARCHAR(64),
 
     -- Linked headlines (stored as JSONB for flexibility)
     -- Format: [{"headline": "...", "strength": "STRONG"|"WEAK", "rationale": "..."}]
