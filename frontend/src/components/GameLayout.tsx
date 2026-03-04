@@ -127,16 +127,22 @@ export function GameLayout({
       {inGame && (
         <main className="flex-1 min-h-0 overflow-hidden">
           {/* Desktop layout */}
-          <div className="hidden lg:grid lg:grid-cols-[240px_1fr_240px] gap-4 h-full max-w-7xl mx-auto px-4 py-4">
+          <div className="hidden lg:grid lg:grid-cols-[240px_1fr_320px] gap-4 h-full max-w-7xl mx-auto px-4 py-4">
             {/* ── Left sidebar ── */}
-            <aside className="min-h-0 overflow-y-auto pr-1">
-              <ScoreBarChart
-                players={players}
-                currentPlayerId={currentPlayerId}
-                totalGameMins={totalGameMins}
-                currentGameMins={currentGameMins}
-                phase={phase}
-              />
+            <aside className="min-h-0 flex flex-col pr-1">
+              <div className="flex-1 min-h-0 overflow-y-auto">
+                <ScoreBarChart
+                  players={players}
+                  currentPlayerId={currentPlayerId}
+                  totalGameMins={totalGameMins}
+                  currentGameMins={currentGameMins}
+                  phase={phase}
+                />
+              </div>
+              <div className="shrink-0 pt-3 pb-[env(safe-area-inset-bottom)] space-y-2">
+                <PriorityPlanet planet={priorityPlanet} />
+                <InGameDate inGameNow={derivedInGameNow} />
+              </div>
             </aside>
 
             {/* ── Center: feed + input ── */}
@@ -150,18 +156,13 @@ export function GameLayout({
               </div>
               {phase === 'PLAYING' && (
                 <div className="shrink-0 pt-3 pb-[env(safe-area-inset-bottom)]">
-                  <HeadlineInput
-                    onSubmit={onSubmitHeadline}
-                    phase={phase}
-                  />
+                  <HeadlineInput onSubmit={onSubmitHeadline} phase={phase} />
                 </div>
               )}
             </section>
 
             {/* ── Right sidebar ── */}
-            <aside className="min-h-0 overflow-y-auto space-y-4 pl-1">
-              <PriorityPlanet planet={priorityPlanet} />
-              <InGameDate inGameNow={derivedInGameNow} />
+            <aside className="min-h-0 flex flex-col pl-1">
               {phase === 'BREAK' && roundSummary && (
                 <RoundSummary summary={roundSummary} roundNo={currentRound} />
               )}
