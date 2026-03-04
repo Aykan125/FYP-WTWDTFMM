@@ -49,9 +49,9 @@ export function RoundSummary({ summary, roundNo }: RoundSummaryProps) {
   const { narrative, themes, highlightedHeadlines, dominantPlanets, roundStats } = summary.summary;
 
   return (
-    <Card padding="sm">
+    <Card padding="sm" className="h-full">
       <SectionTitle>Period {roundNo} Summary</SectionTitle>
-      <div className="max-h-[40dvh] overflow-y-auto space-y-3 pr-0.5">
+      <div className="max-h-[calc(100dvh-12rem)] overflow-y-auto space-y-3 pr-0.5">
         {/* Header stats */}
         <div className="flex gap-2 text-xs text-gray-400">
           <span>{roundStats.headlineCount} developments</span>
