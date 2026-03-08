@@ -5,10 +5,9 @@ import { Card, SectionTitle } from './ui';
 interface HeadlineFeedProps {
   headlines: Headline[];
   currentPlayerId: string;
-  currentRound?: number;
 }
 
-export function HeadlineFeed({ headlines, currentPlayerId, currentRound }: HeadlineFeedProps) {
+export function HeadlineFeed({ headlines, currentPlayerId }: HeadlineFeedProps) {
   const feedRef = useRef<HTMLDivElement>(null);
   const userScrolledRef = useRef(false);
 
@@ -29,9 +28,7 @@ export function HeadlineFeed({ headlines, currentPlayerId, currentRound }: Headl
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  const displayedHeadlines = currentRound !== undefined
-    ? headlines.filter((h) => h.roundNo === currentRound)
-    : headlines;
+  const displayedHeadlines = headlines;
 
   if (displayedHeadlines.length === 0) {
     return (
