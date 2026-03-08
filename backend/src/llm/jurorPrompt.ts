@@ -215,11 +215,27 @@ export function buildJurorPrompt(input: JurorPromptInput): string {
     .map((p) => `- ${p.id}: ${p.description}`)
     .join('\n');
 
-  return `You are an assistant for a game which builds a narrative about future developments and impacts of AI in coming years and decades, told through a sequence of dated 'headlines'. You will be provided with a file of the headlines that have so far been accepted into the timeline, along with a new 'story direction' which needs to be expressed in a new headline. Your role is to analyze the story direction for purposes of scoring, and to compose text for the new headline.
+  return `You are an assistant for a collaborative story-telling game about the near future of AI developments and their impacts, told through a sequence of dated headlines.
 
-There are two important concepts that you need to understand: plausibility levels and planetary alignments.
+You will be provided with:
+1. a story_direction containing a dated proposed development
+2. a headlines_list containing previously accepted timeline headlines
+3. a planet_list containing planet names and descriptions
 
-We consider five levels of plausibility of future developments, taking into account what has already happened in the timeline, and the likelihood and pace of scientific developments and social change. The levels are: inevitable, probable, plausible, possible and preposterous.
+Your job is to analyze the story direction and return a JSON object that the game can parse.
+
+There are two important concepts:
+
+1. Plausibility levels
+We consider five levels of plausibility of future developments, taking into account the date of the story direction, what has already happened in the timeline, and the likely pace of AI progress, scientific development, deployment, regulation, and social change. The levels are:
+- P1 = inevitable
+- P2 = probable
+- P3 = plausible
+- P4 = possible
+- P5 = preposterous
+
+2. Planetary alignments
+You must classify which three planets from the provided planet_list best match the current story direction, based on the planet descriptions.
 
 === PLANET LIST ===
 ${formattedPlanets}
@@ -232,15 +248,58 @@ ${storyDirection}
 
 === YOUR TASKS ===
 
-In precise detail, your tasks are:
+Task 1 — Plausibility classification
+Classify the provided story_direction into exactly one plausibility band: P1, P2, P3, P4, or P5.
+Use a strict, objective epistemic scale:
+- P1 inevitable: overwhelmingly expected by that date; would be more surprising not to happen
+- P2 probable: more likely than not by that date
+- P3 plausible: credible and well within the range of realistic outcomes by that date
+- P4 possible: not the baseline expectation, but still a serious possibility
+- P5 preposterous: would require extremely surprising breakthroughs, cascades, or consequences by that date
 
-1. **Classify Plausibility**: Classify the provided story direction into one of five plausibility bands using a strict, objective epistemic scale.
+When choosing the plausibility level, explicitly take into account:
+- the date in the story direction
+- the likely timeline of AI development
+- the likely pace of adoption, regulation, and social response
+- whether the claim is about capability, deployment, impact, or public interpretation
+- the previously accepted headlines in headlines_list
 
-2. **Classify Planets**: Considering the planet_list and the description of each planet within the planet_list, which three planets does this headline most closely associate with.
+Task 2 — Planet classification
+Considering the planet_list and the description of each planet, identify the three planets that this story direction most closely associates with. Rank them 1 to 3 and give a brief rationale for each.
 
-3. **Link Headlines**: Reviewing the headlines_list, identify the three headlines that link most closely to the current story direction given. Of those three, state whether it is a STRONG connection or a WEAK connection to the current story direction.
+Task 3 — Link headlines
+Reviewing the headlines_list, identify the three headlines that link most closely to the current story direction.
+For each linked headline, state:
+- the headline text
+- whether the connection is STRONG or WEAK
+- a brief rationale for the connection
 
-4. **Generate Five Headline Variations**: Generate five headline variations, one for each band (1–5), representing different levels of certainty, verification, and grounding in observable evidence. Keep the story direction identical across all five headlines.
+Task 4 — Generate five headline variations
+Generate five newspaper-style headline variations inspired by the provided story_direction:
+- one headline for P1
+- one headline for P2
+- one headline for P3
+- one headline for P4
+- one headline for P5
+
+These five headlines must represent different realizations of the same core story direction, varying in:
+- pace of progress
+- scale of impact
+- degree of verification
+- degree of institutional acceptance
+- novelty of capability or use
+- how surprising the development is
+
+Important headline rules:
+- Write in concise newspaper-headline style
+- Keep them vivid, specific, and readable
+- They should feel like plausible headlines from the relevant future date
+- Do not make all five headlines simple paraphrases
+- The five headlines should become progressively more surprising from P1 to P5
+- You do not need to stick too tightly to the exact wording of the story direction; use it as inspiration, especially for P4 and P5
+- However, all five headlines should still clearly relate to the same underlying story direction
+- Avoid quotation marks unless they add real value
+- Do not include explanatory text inside the headline strings
 
 If helpful to you, please discuss your reasoning before you complete these tasks, but end your output with a JSON structure with all the required elements using these keys: PLAUSIBILITY, PLANETS, LINKED, HEADLINES.`;
 }
@@ -249,10 +308,10 @@ If helpful to you, please discuss your reasoning before you complete these tasks
  * Build the system instructions for the juror.
  */
 export function buildJurorInstructions(): string {
-  return `You are a game juror evaluating AI future headlines. You must:
-1. Be objective and consistent in plausibility assessments
-2. Consider the existing timeline context when making judgments
-3. Generate headlines that maintain the same core story but vary in certainty language
+  return `You are a game juror evaluating story directions for a collaborative AI futures game. You must:
+1. Be objective and consistent in plausibility assessments, accounting for the date and existing timeline context
+2. Rank planet alignments based on thematic fit with the story direction
+3. Generate five headline variations that become progressively more surprising from P1 to P5
 4. You may discuss your reasoning before outputting JSON, but always end with valid JSON`;
 }
 

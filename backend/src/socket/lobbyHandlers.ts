@@ -678,7 +678,14 @@ export function setupLobbyHandlers(io: Server): void {
 
         console.log(
           `Headline submitted by ${player.nickname} in session ${joinCode} ` +
-          `(round ${sessionState.currentRound}, dice: ${transformResult.diceRoll}, band: ${transformResult.selectedBand})`
+          `(round ${sessionState.currentRound}, dice: ${transformResult.diceRoll}, selected band: ${transformResult.selectedBand}, ` +
+          `plausibility: ${transformResult.plausibility.band} (${transformResult.plausibility.label}))\n` +
+          `  Band 1 (inevitable): ${transformResult.allBands.band1}\n` +
+          `  Band 2 (probable):   ${transformResult.allBands.band2}\n` +
+          `  Band 3 (plausible):  ${transformResult.allBands.band3}\n` +
+          `  Band 4 (possible):   ${transformResult.allBands.band4}\n` +
+          `  Band 5 (prepost.):   ${transformResult.allBands.band5}\n` +
+          `  >> Selected:         ${transformResult.selectedHeadline}`
         );
 
         // Apply scoring asynchronously (don't block the response)
@@ -720,7 +727,12 @@ export function setupLobbyHandlers(io: Server): void {
           });
 
           console.log(
-            `Scoring applied for ${player.nickname}: +${scoringResult.breakdown.total} pts (total: ${scoringResult.newTotalScore})`
+            `Scoring for ${player.nickname}: ` +
+            `baseline=${scoringResult.breakdown.baseline} + ` +
+            `plausibility=${scoringResult.breakdown.plausibility} (band ${transformResult.plausibility.band}) + ` +
+            `connection=${scoringResult.breakdown.connectionScore} (${connectionType}) + ` +
+            `planet=${scoringResult.breakdown.planetBonus} ` +
+            `= +${scoringResult.breakdown.total} pts (total: ${scoringResult.newTotalScore})`
           );
         } catch (scoringError) {
           console.error('Error applying scoring:', scoringError);

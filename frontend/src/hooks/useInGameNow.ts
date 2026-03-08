@@ -72,7 +72,7 @@ export function useInGameNow({
 
     // Compute immediately, then every 5 seconds
     compute();
-    intervalRef.current = setInterval(compute, 1_000);
+    intervalRef.current = setInterval(compute, 5_000);
 
     return () => {
       if (intervalRef.current) {

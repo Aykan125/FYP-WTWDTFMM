@@ -9,8 +9,7 @@ export function InGameDate({ inGameNow }: InGameDateProps) {
 
   const date = new Date(inGameNow);
   const formatted = date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
+    month: 'long',
     year: 'numeric',
   });
 
