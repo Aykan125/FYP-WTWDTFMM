@@ -751,6 +751,7 @@ export function setupLobbyHandlers(io: Server): void {
               playerId,
               breakdown: scoringResult.breakdown,
               newTotalScore: scoringResult.newTotalScore,
+              updatedPriorityPlanet: scoringResult.updatedPriorityPlanet,
             },
           });
 

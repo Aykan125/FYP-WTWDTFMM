@@ -263,6 +263,7 @@ export async function applyHeadlineEvaluation(
       breakdown,
       newTotalScore,
       leaderboard,
+      updatedPriorityPlanet: planetResult.updatedState.currentPriority,
     };
   } catch (error) {
     await client.query('ROLLBACK');
