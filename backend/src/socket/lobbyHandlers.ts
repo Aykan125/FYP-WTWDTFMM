@@ -601,7 +601,7 @@ export function setupLobbyHandlers(io: Server): void {
             linked_headlines, planet_rationales,
             llm_model, llm_input_tokens, llm_output_tokens,
             llm_request, llm_response,
-            llm_status
+            llm_status, in_game_submitted_at
           ) VALUES (
             $1, $2, $3, $4,
             $5, $6, $7,
@@ -611,9 +611,9 @@ export function setupLobbyHandlers(io: Server): void {
             $18, $19,
             $20, $21, $22,
             $23, $24,
-            'evaluated'
+            'evaluated', $25
           )
-          RETURNING id, created_at`,
+          RETURNING id, created_at, in_game_submitted_at`,
           [
             sessionState.id,
             playerId,
@@ -639,6 +639,7 @@ export function setupLobbyHandlers(io: Server): void {
             transformResult.usage?.outputTokens,
             JSON.stringify(transformResult.llmRequest),
             transformResult.llmResponse,
+            sessionState.inGameNow,
           ]
         );
 
@@ -663,6 +664,9 @@ export function setupLobbyHandlers(io: Server): void {
           planets: transformResult.planets.top3.map((p) => p.id),
           allBands: transformResult.allBands,
           createdAt: new Date(insertedRow.created_at).toISOString(),
+          inGameSubmittedAt: insertedRow.in_game_submitted_at
+            ? new Date(insertedRow.in_game_submitted_at).toISOString()
+            : null,
         };
 
         // Broadcast to all players in the session
@@ -793,7 +797,8 @@ export function setupLobbyHandlers(io: Server): void {
             h.band3_headline,
             h.band4_headline,
             h.band5_headline,
-            h.created_at
+            h.created_at,
+            h.in_game_submitted_at
           FROM game_session_headlines h
           JOIN session_players p ON h.player_id = p.id
           WHERE h.session_id = $1
@@ -829,6 +834,9 @@ export function setupLobbyHandlers(io: Server): void {
             band5: row.band5_headline,
           } : null,
           createdAt: new Date(row.created_at).toISOString(),
+          inGameSubmittedAt: row.in_game_submitted_at
+            ? new Date(row.in_game_submitted_at).toISOString()
+            : null,
         }));
 
         callback?.({

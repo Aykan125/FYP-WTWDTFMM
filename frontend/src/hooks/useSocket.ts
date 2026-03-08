@@ -46,6 +46,7 @@ export interface Headline {
   roundNo: number;
   text: string;
   createdAt: string;
+  inGameSubmittedAt: string | null;
 }
 
 export interface HighlightedHeadline {
