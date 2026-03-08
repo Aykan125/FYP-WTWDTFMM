@@ -70,9 +70,9 @@ export function useInGameNow({
       setDerived(new Date(newInGameTime).toISOString());
     };
 
-    // Compute immediately, then every 60 seconds
+    // Compute immediately, then every 5 seconds
     compute();
-    intervalRef.current = setInterval(compute, 60_000);
+    intervalRef.current = setInterval(compute, 1_000);
 
     return () => {
       if (intervalRef.current) {

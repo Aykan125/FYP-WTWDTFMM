@@ -126,10 +126,23 @@ class GameLoopInstance {
     let phaseEndsAt: Date | null = null;
     let inGameStartAt = this.state.inGameStartAt;
 
+    // Accumulate in-game time from the outgoing phase before resetting phaseStartedAt
+    if (inGameStartAt && this.state.phaseStartedAt) {
+      const realElapsed = now.getTime() - this.state.phaseStartedAt.getTime();
+      const inGameElapsed = realElapsed * this.state.timelineSpeedRatio;
+      inGameStartAt = new Date(inGameStartAt.getTime() + inGameElapsed);
+    }
+
     if (toPhase === 'PLAYING') {
-      // Initialize in-game time on first PLAYING phase
       if (!inGameStartAt) {
+        // First PLAYING phase: anchor in-game clock to current real date
         inGameStartAt = now;
+        // Compute ratio so game timeline spans exactly 20 years
+        const TWENTY_YEARS_MS = 20 * 365.25 * 24 * 60 * 60 * 1000;
+        const totalGameMs =
+          this.state.maxRounds * this.state.playMinutes * 60_000 +
+          (this.state.maxRounds - 1) * this.state.breakMinutes * 60_000;
+        this.state.timelineSpeedRatio = TWENTY_YEARS_MS / totalGameMs;
       }
       phaseEndsAt = new Date(now.getTime() + this.state.playMinutes * 60 * 1000);
     } else if (toPhase === 'BREAK') {
@@ -201,21 +214,23 @@ class GameLoopInstance {
 
       // Update game_sessions
       await client.query(
-        `UPDATE game_sessions 
+        `UPDATE game_sessions
          SET phase = $1,
              current_round = $2,
              phase_started_at = $3,
              phase_ends_at = $4,
              in_game_start_at = $5,
-             status = $6,
+             timeline_speed_ratio = $6,
+             status = $7,
              updated_at = CURRENT_TIMESTAMP
-         WHERE id = $7`,
+         WHERE id = $8`,
         [
           toPhase,
           roundNo,
           this.state.phaseStartedAt,
           this.state.phaseEndsAt,
           this.state.inGameStartAt,
+          this.state.timelineSpeedRatio,
           toPhase, // Keep status in sync with phase for now
           this.state.sessionId,
         ]

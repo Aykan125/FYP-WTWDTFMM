@@ -151,7 +151,6 @@ export function GameLayout({
                 <HeadlineFeed
                   headlines={headlines}
                   currentPlayerId={currentPlayerId}
-                  currentRound={currentRound}
                 />
               </div>
               {phase === 'PLAYING' && (
@@ -179,7 +178,6 @@ export function GameLayout({
               <HeadlineFeed
                 headlines={headlines}
                 currentPlayerId={currentPlayerId}
-                currentRound={currentRound}
               />
               <ScoreBarChart
                 players={players}
