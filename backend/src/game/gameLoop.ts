@@ -290,7 +290,7 @@ class GameLoopInstance {
           ) ORDER BY p.joined_at
         ) as players
       FROM game_sessions s
-      LEFT JOIN session_players p ON s.id = p.session_id
+      LEFT JOIN session_players p ON s.id = p.session_id AND p.is_system = FALSE
       WHERE s.id = $1
       GROUP BY s.id`,
       [this.state.sessionId]
