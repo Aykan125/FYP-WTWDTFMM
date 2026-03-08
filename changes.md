@@ -1,3 +1,47 @@
+# Rewrite juror prompt in jurorPrompt.ts
+
+## What changed
+
+`backend/src/llm/jurorPrompt.ts` — `buildJurorPrompt` and `buildJurorInstructions` rewritten. The TypeScript types and JSON schema are unchanged.
+
+The new prompt:
+- Explicitly names the five plausibility levels as P1–P5 with definitions for each
+- Splits tasks into four clearly labelled sections (plausibility, planet classification, link headlines, headline generation)
+- Adds detailed guidance on what factors to consider when classifying plausibility (date, adoption pace, claim type, existing timeline)
+- Adds per-headline generation rules (no simple paraphrases, progressively more surprising P1→P5, no explanatory text inside headline strings)
+- Updates system instructions to reflect the richer task description
+
+## Trade-offs considered
+
+- **Keep the old terse prompt**: Shorter token count, but lacks explicit guidance on date-sensitive plausibility reasoning and headline variation rules, leading to lower-quality outputs.
+- **Rewrite with richer instructions (chosen)**: Slightly more tokens per call, but the additional task scaffolding produces more consistent plausibility classifications and more varied headline bands.
+
+## Justified rationale
+
+The old prompt gave no guidance on how to vary the five headline bands or how to weight the date when assessing plausibility. The new prompt codifies the game's intent directly, which should improve output consistency without changing any parsing logic.
+
+---
+
+# Expand backend logging for headline submission and scoring
+
+## What changed
+
+`backend/src/socket/lobbyHandlers.ts` — two `console.log` statements expanded.
+
+1. **Headline submission log**: now prints the dice roll, selected band, plausibility band and label, all 5 AI-generated band variants (`band1`–`band5`), and the selected headline.
+2. **Scoring log**: now prints a per-component breakdown — `baseline`, `plausibility` (with band number), `connectionScore` (with connection type), and `planetBonus` — before the total delta and running total.
+
+## Trade-offs considered
+
+- **Structured logging (JSON objects)**: easier to parse programmatically, but harder to skim in a terminal during manual testing; overkill for a dev-time debugging tool.
+- **Minimal change (current approach)**: human-readable multi-line format, no new dependencies, all data already in scope — best fit for dev workflow and requires zero refactoring.
+
+## Justified rationale
+
+The game is in active development and the logs are primarily used by the developer to verify AI output quality and scoring correctness during test sessions. A concise, readable multi-line format gives instant visual feedback without adding infrastructure. All required fields (`allBands`, `plausibility`, `breakdown.*`, `connectionType`) were already in scope at both log sites.
+
+---
+
 # P1 Socket Reconnect Fixes
 
 ## Problem 1 — Transport reconnect silently breaks the session
@@ -132,3 +176,28 @@ Only `baselineB` changed (`backend/src/game/scoringTypes.ts`).
 | Skill components as % of max | 44% | 62% |
 
 Halving the baseline compresses the floor without touching the ceiling shape. Players who actively connect to others' headlines, hit the plausibility sweet spot, and maintain a planet priority earn a proportionally larger reward relative to passive submitters. The scoring spread between an engaged and a disengaged player roughly doubles.
+
+---
+
+## In-game date display: tick interval and format
+
+### What changed
+
+- `frontend/src/hooks/useInGameNow.ts` — tick interval reduced from 1s to 5s.
+- `frontend/src/components/InGameDate.tsx` — date format changed from `"Mar 15, 2031"` (short month + day + year) to `"March 2031"` (long month + year only).
+
+### Trade-offs considered
+
+**Tick interval:**
+- **1s** — matches the real-time feel but causes unnecessary re-renders every second for a display that only changes meaningfully over minutes. Adds minor CPU cost on low-end devices.
+- **5s** (chosen) — still feels live without wasteful renders. A 5s lag in the displayed date is imperceptible given in-game time spans years per minute.
+- **60s** (original) — too infrequent; the date appeared frozen.
+
+**Date format:**
+- **Full date (day + month + year)** — more precise but the day figure is noisy when in-game time jumps days per second; it changes too fast to be readable.
+- **Month + year only** (chosen) — appropriate granularity for a game spanning decades. Stable enough to read comfortably; still communicates how far into the future the timeline has reached.
+- **Year only** — too coarse; loses the sense of month-by-month progression during a round.
+
+### Justification
+
+The game's timeline spans roughly 20 years across a session of ~55 minutes. At that speed, days are meaningless — players care about the year and approximate era. Month + year gives the right level of resolution. A 5s tick is a good balance between responsiveness and efficiency.
