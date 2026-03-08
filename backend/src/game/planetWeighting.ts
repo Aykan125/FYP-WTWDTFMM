@@ -400,12 +400,16 @@ export function applyPlanetScoringAndUsage(
   // Step 2: Update tally with AI's top-3 planets
   const tallyUpdatedState = updatePlanetTally(currentState, aiRankings);
 
-  // Step 3: Select new priority planet (old priority becomes previousPriority)
-  const newPriority = selectPriorityPlanet(tallyUpdatedState);
+  // Step 3: Only rotate priority if the planet was hit (appeared in AI's top-3).
+  // If missed, keep the same priority so the player has another chance next submission.
+  const didHit = matchRank !== null;
+  const newPriority = didHit
+    ? selectPriorityPlanet(tallyUpdatedState)
+    : currentState.currentPriority;
 
   const finalState: PlanetTallyState = {
     tally: tallyUpdatedState.tally,
-    previousPriority: currentState.currentPriority,
+    previousPriority: didHit ? currentState.currentPriority : state.previousPriority,
     currentPriority: newPriority,
   };
 
