@@ -99,6 +99,7 @@ export function useSocket(): UseSocketReturn {
   const [sessionState, setSessionState] = useState<SessionState | null>(null);
   const [headlines, setHeadlines] = useState<Headline[]>([]);
   const [roundSummary, setRoundSummary] = useState<RoundSummary | null>(null);
+  const rejoinRef = useRef<{ joinCode: string; playerId: string } | null>(null);
 
   useEffect(() => {
     // Initialize socket connection
@@ -114,6 +115,21 @@ export function useSocket(): UseSocketReturn {
     socket.on('connect', () => {
       console.log('Socket connected:', socket.id);
       setConnected(true);
+      if (rejoinRef.current) {
+        const { joinCode, playerId } = rejoinRef.current;
+        socket.emit(
+          'lobby:join',
+          { joinCode, playerId },
+          (response: { success: boolean; state?: SessionState; error?: string }) => {
+            if (response.success && response.state) {
+              setSessionState(response.state);
+              socket.emit('headline:get_feed', { joinCode }, (feedRes: { headlines?: Headline[] }) => {
+                if (feedRes.headlines) setHeadlines(feedRes.headlines);
+              });
+            }
+          }
+        );
+      }
     });
 
     socket.on('disconnect', (reason) => {
@@ -216,6 +232,7 @@ export function useSocket(): UseSocketReturn {
         (response: { success: boolean; state?: SessionState; error?: string }) => {
           if (response.success && response.state) {
             setSessionState(response.state);
+            rejoinRef.current = { joinCode, playerId };
             resolve(true);
           } else {
             console.error('Failed to join lobby:', response.error);
@@ -227,6 +244,7 @@ export function useSocket(): UseSocketReturn {
   };
 
   const leaveLobby = useCallback(() => {
+    rejoinRef.current = null;
     if (socketRef.current) {
       socketRef.current.emit('lobby:leave');
       setSessionState(null);

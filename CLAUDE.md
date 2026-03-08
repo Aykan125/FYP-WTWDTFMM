@@ -122,3 +122,13 @@ FRONTEND_URL=http://localhost:5173
 ## Testing
 
 Backend tests are in `backend/tests/` with Jest. Tests mock pg pool and Socket.IO - no database required. Run with `npm test` from backend directory.
+
+## Change Log
+
+Whenever a change is made to any existing behaviour, value, or system in this codebase, `changes.md` in the project root must be updated. Each entry must include:
+
+1. **What changed** — the specific behaviour, value, or system that was modified and the files affected.
+2. **Trade-offs considered** — at least two alternative approaches that were evaluated, with their pros and cons.
+3. **Justified rationale** — which option was chosen and why, grounded in the actual constraints of this project (scale, stack, game design intent, etc.).
+
+New features that have no prior behaviour to replace do not require a `changes.md` entry, but bug fixes, tuning changes, and refactors of existing systems do.

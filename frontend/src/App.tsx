@@ -110,8 +110,34 @@ function App() {
       });
 
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || data.message || 'Failed to join session');
+        const errData = await response.json();
+        // If game already started, try to recover existing player by nickname
+        if (response.status === 400 && errData.error === 'Cannot join session') {
+          const rejoinResponse = await fetch(`${API_URL}/api/sessions/${code}/rejoin`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nickname: playerNickname.trim() }),
+          });
+          if (!rejoinResponse.ok) {
+            const rejoinData = await rejoinResponse.json();
+            throw new Error(rejoinData.message || 'Game in progress — nickname not found in this session');
+          }
+          const rejoinData = await rejoinResponse.json();
+          const newSessionData = {
+            joinCode: code,
+            playerId: rejoinData.player.id,
+            isHost: rejoinData.player.isHost,
+          };
+          setSessionData(newSessionData);
+          const joined = await joinLobby(code, rejoinData.player.id);
+          if (joined) {
+            navigate(`/lobby/${code}`);
+          } else {
+            setError('Failed to connect to lobby');
+          }
+          return;
+        }
+        throw new Error(errData.error || errData.message || 'Failed to join session');
       }
 
       const data = await response.json();

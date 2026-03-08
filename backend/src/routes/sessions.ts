@@ -192,6 +192,48 @@ router.post('/sessions/:joinCode/join', async (req: Request, res: Response): Pro
 });
 
 /**
+ * POST /api/sessions/:joinCode/rejoin
+ * Recover an existing player's identity by nickname, regardless of game phase.
+ * Used when a player loses localStorage (new device/browser).
+ */
+router.post('/sessions/:joinCode/rejoin', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const joinCode = joinCodeSchema.parse(req.params.joinCode.toUpperCase());
+    const { nickname } = joinSessionSchema.parse(req.body);
+
+    const client = await pool.connect();
+    try {
+      const result = await client.query(
+        `SELECT sp.id, sp.nickname, sp.is_host
+         FROM session_players sp
+         JOIN game_sessions gs ON gs.id = sp.session_id
+         WHERE gs.join_code = $1 AND LOWER(sp.nickname) = LOWER($2)`,
+        [joinCode, nickname]
+      );
+
+      if (result.rows.length === 0) {
+        res.status(404).json({ error: 'Player not found', message: 'No player with that nickname in this session' });
+        return;
+      }
+
+      const player = result.rows[0];
+      res.json({
+        player: { id: player.id, nickname: player.nickname, isHost: player.is_host },
+      });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    if (error instanceof ZodError) {
+      res.status(400).json({ error: 'Validation failed', details: (error as ZodError).errors });
+      return;
+    }
+    console.error('Error rejoining session:', error);
+    res.status(500).json({ error: 'Failed to rejoin session' });
+  }
+});
+
+/**
  * GET /api/sessions/:joinCode
  * Get session details including all players
  */
