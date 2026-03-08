@@ -5,12 +5,9 @@ import { Card, SectionTitle } from './ui';
 interface HeadlineFeedProps {
   headlines: Headline[];
   currentPlayerId: string;
-  inGameNow: string | null;
-  serverNow: string | null;
-  timelineSpeedRatio: number;
 }
 
-export function HeadlineFeed({ headlines, currentPlayerId, inGameNow, serverNow, timelineSpeedRatio }: HeadlineFeedProps) {
+export function HeadlineFeed({ headlines, currentPlayerId }: HeadlineFeedProps) {
   const feedRef = useRef<HTMLDivElement>(null);
   const userScrolledRef = useRef(false);
 
@@ -24,18 +21,6 @@ export function HeadlineFeed({ headlines, currentPlayerId, inGameNow, serverNow,
     if (!feedRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = feedRef.current;
     userScrolledRef.current = scrollHeight - scrollTop - clientHeight > 50;
-  };
-
-  const getHeadlineInGameDate = (createdAt: string): string | null => {
-    if (!inGameNow || !serverNow) return null;
-    const inGameMs = new Date(inGameNow).getTime();
-    const serverMs = new Date(serverNow).getTime();
-    const headlineMs = new Date(createdAt).getTime();
-    const headlineInGameMs = inGameMs - (serverMs - headlineMs) * timelineSpeedRatio;
-    return new Date(headlineInGameMs).toLocaleDateString('en-US', {
-      month: 'long',
-      year: 'numeric',
-    });
   };
 
   const displayedHeadlines = headlines;
@@ -87,7 +72,9 @@ export function HeadlineFeed({ headlines, currentPlayerId, inGameNow, serverNow,
                   {isOwn && <span className="ml-1 text-gray-400">(you)</span>}
                 </span>
                 <span className="text-[11px] text-gray-300">
-                  R{headline.roundNo} &middot; {getHeadlineInGameDate(headline.createdAt) ?? ''}
+                  R{headline.roundNo} &middot; {headline.inGameSubmittedAt
+                    ? new Date(headline.inGameSubmittedAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+                    : ''}
                 </span>
               </div>
               <p className="text-sm text-gray-800 leading-relaxed">

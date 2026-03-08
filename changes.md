@@ -1,3 +1,27 @@
+# Fix headline in-game date (store at submit time)
+
+## What changed
+
+**Files:** `backend/db/migrations/009_headline_ingame_time.sql`, `backend/src/socket/lobbyHandlers.ts`, `frontend/src/hooks/useSocket.ts`, `frontend/src/components/HeadlineFeed.tsx`, `frontend/src/components/GameLayout.tsx`
+
+- Added nullable `in_game_submitted_at TIMESTAMPTZ` column to `game_session_headlines`.
+- `headline:submit` handler now stores `sessionState.inGameNow` (computed at insert time) as `in_game_submitted_at` and returns it in the RETURNING clause and broadcast event.
+- `headline:get_feed` SELECT now includes `in_game_submitted_at` so historical headlines carry the field.
+- `HeadlineFeed` component removed `getHeadlineInGameDate` back-calculation (which produced wrong years after round boundaries due to ratio changes) and reads `headline.inGameSubmittedAt` directly.
+- `GameLayout` no longer passes `inGameNow`, `serverNow`, `timelineSpeedRatio` to `HeadlineFeed` as those props are gone.
+
+## Trade-offs considered
+
+1. **Keep back-calculation, fix the ratio used** — pass each headline's round number and look up the ratio for that round. Avoids a DB migration. Rejected because ratio data is not stored per-round in the DB; reconstructing the correct ratio for a historical headline is fragile and would require more schema changes anyway.
+
+2. **Store `in_game_submitted_at` at insert time (chosen)** — a single nullable column added; `getSessionState` already computes `inGameNow` correctly before the INSERT, so the value is reliable. Frontend becomes a simple date formatter. Requires a migration but the column is nullable so existing rows are unaffected.
+
+## Justified rationale
+
+Storing the in-game timestamp at write time is the only approach that survives round-boundary ratio changes. It is simple, self-contained, and consistent with how other temporal data (e.g. `phase_started_at`) is handled in this schema.
+
+---
+
 # Per-round variable in-game time speed (ratio 3:5:7)
 
 ## What changed

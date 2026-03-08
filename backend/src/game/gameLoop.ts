@@ -13,6 +13,16 @@ import { getPlayerScoreBreakdowns } from './scoringService.js';
 const ROUND_SPEED_WEIGHTS = [3, 5, 7];
 const TOTAL_INGAME_MS = 20 * 365.25 * 24 * 60 * 60 * 1000;
 
+/** Exported for testing */
+export function computeRoundSpeedRatio(roundNo: number, playMinutes: number): number {
+  const totalWeight = ROUND_SPEED_WEIGHTS.reduce((a, b) => a + b, 0);
+  const roundWeight =
+    ROUND_SPEED_WEIGHTS[roundNo - 1] ??
+    ROUND_SPEED_WEIGHTS[ROUND_SPEED_WEIGHTS.length - 1];
+  const roundInGameMs = (roundWeight / totalWeight) * TOTAL_INGAME_MS;
+  return roundInGameMs / (playMinutes * 60_000);
+}
+
 /**
  * Pure function to compute the next phase and round based on current state
  * Exported for testing
@@ -140,13 +150,7 @@ class GameLoopInstance {
       if (!inGameStartAt) {
         inGameStartAt = now;
       }
-      // Compute speed ratio for this specific round from the weight array
-      const totalWeight = ROUND_SPEED_WEIGHTS.reduce((a, b) => a + b, 0);
-      const roundWeight =
-        ROUND_SPEED_WEIGHTS[roundNo - 1] ??
-        ROUND_SPEED_WEIGHTS[ROUND_SPEED_WEIGHTS.length - 1];
-      const roundInGameMs = (roundWeight / totalWeight) * TOTAL_INGAME_MS;
-      this.state.timelineSpeedRatio = roundInGameMs / (this.state.playMinutes * 60_000);
+      this.state.timelineSpeedRatio = computeRoundSpeedRatio(roundNo, this.state.playMinutes);
       phaseEndsAt = new Date(now.getTime() + this.state.playMinutes * 60 * 1000);
     } else if (toPhase === 'BREAK') {
       this.state.timelineSpeedRatio = 0;

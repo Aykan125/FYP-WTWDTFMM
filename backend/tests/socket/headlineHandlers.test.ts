@@ -277,6 +277,87 @@ describe('Headline Handlers', () => {
       });
     });
 
+    it('should store in_game_submitted_at when session has inGameNow', async () => {
+      const mockSession = createMockSessionData();
+      const insertedRow = {
+        id: 'headline-1',
+        created_at: new Date(),
+        in_game_submitted_at: new Date(),
+      };
+
+      (pool.query as jest.Mock)
+        .mockResolvedValueOnce({ rows: [mockSession] }) // getSessionState
+        .mockResolvedValueOnce({ rows: [] }) // fetch existing headlines
+        .mockResolvedValueOnce({ rows: [insertedRow] }); // INSERT headline
+
+      const callback = jest.fn();
+      await submitHandler({ joinCode: 'ABC123', headline: 'Test headline' }, callback);
+
+      const insertCall = (pool.query as jest.Mock).mock.calls.find(
+        (call) => call[0].includes('INSERT INTO game_session_headlines')
+      );
+      expect(insertCall).toBeDefined();
+      // $25 is in_game_submitted_at — should be a non-null string (sessionState.inGameNow)
+      const params = insertCall[1];
+      expect(params[24]).not.toBeNull();
+      expect(typeof params[24]).toBe('string');
+    });
+
+    it('headline:new broadcast includes inGameSubmittedAt', async () => {
+      const mockSession = createMockSessionData();
+      const inGameTime = new Date();
+      const insertedRow = {
+        id: 'headline-1',
+        created_at: new Date(),
+        in_game_submitted_at: inGameTime,
+      };
+
+      const mockToEmit = jest.fn();
+      (mockIO.to as jest.Mock).mockReturnValue({ emit: mockToEmit });
+
+      (pool.query as jest.Mock)
+        .mockResolvedValueOnce({ rows: [mockSession] }) // getSessionState
+        .mockResolvedValueOnce({ rows: [] }) // fetch existing headlines
+        .mockResolvedValueOnce({ rows: [insertedRow] }); // INSERT headline
+
+      const callback = jest.fn();
+      await submitHandler({ joinCode: 'ABC123', headline: 'Test headline' }, callback);
+
+      expect(mockToEmit).toHaveBeenCalledWith(
+        'headline:new',
+        expect.objectContaining({
+          inGameSubmittedAt: inGameTime.toISOString(),
+        })
+      );
+    });
+
+    it('inGameSubmittedAt is null when session has no in_game_start_at', async () => {
+      const mockSession = createMockSessionData({ in_game_start_at: null });
+      const insertedRow = {
+        id: 'headline-1',
+        created_at: new Date(),
+        in_game_submitted_at: null,
+      };
+
+      const mockToEmit = jest.fn();
+      (mockIO.to as jest.Mock).mockReturnValue({ emit: mockToEmit });
+
+      (pool.query as jest.Mock)
+        .mockResolvedValueOnce({ rows: [mockSession] }) // getSessionState
+        .mockResolvedValueOnce({ rows: [] }) // fetch existing headlines
+        .mockResolvedValueOnce({ rows: [insertedRow] }); // INSERT headline
+
+      const callback = jest.fn();
+      await submitHandler({ joinCode: 'ABC123', headline: 'Test headline' }, callback);
+
+      expect(mockToEmit).toHaveBeenCalledWith(
+        'headline:new',
+        expect.objectContaining({
+          inGameSubmittedAt: null,
+        })
+      );
+    });
+
     it('should enforce rate limiting - reject second submission within 60 seconds', async () => {
       const mockSession = createMockSessionData();
       const insertedRow = {
