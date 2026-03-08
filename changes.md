@@ -1,3 +1,23 @@
+# Fix: Priority planet only rotates on a hit
+
+## What changed
+
+**File:** `backend/src/game/planetWeighting.ts` (`applyPlanetScoringAndUsage`, step 3)
+
+Previously the priority planet was replaced with a newly selected planet after **every** headline submission, regardless of whether the player's current priority planet appeared in the AI's top-3 rankings. Now the planet only rotates when `matchRank !== null` (i.e. the planet was "hit"). On a miss the current priority and `previousPriority` are both preserved unchanged, giving the player another chance to target the same planet on their next submission.
+
+## Trade-offs considered
+
+1. **Always rotate (previous behaviour):** Simple and predictable, but penalises players who chose well — they lose their planet even when the AI didn't reward it, reducing the strategic value of the feature.
+2. **Rotate only on hit (chosen):** Keeps the planet until the player actually achieves the bonus, making the system feel fair and rewarding skill. Slightly more complex (two code paths) but the logic is trivial and fully covered by existing tests.
+3. **Reset to a fixed planet on miss:** Would be deterministic but arbitrary, and interferes with the tally-based exclusion logic.
+
+## Justified rationale
+
+Option 2 aligns with the game-design intent of the priority planet system: it is a target the player earns by crafting a matching headline, not an arbitrary timer. Keeping the planet stable on a miss preserves the `previousPriority` exclusion invariant and requires no changes outside `planetWeighting.ts`. All 223 existing tests continue to pass.
+
+---
+
 # Pre-fill game with 36 seed headlines from AI history (2022–2025)
 
 ## What changed
