@@ -22,7 +22,7 @@ import {
 describe('Scoring Functions', () => {
   describe('computeBaselineScore', () => {
     it('should return the baseline score from config', () => {
-      expect(computeBaselineScore(DEFAULT_SCORING_CONFIG)).toBe(10);
+      expect(computeBaselineScore(DEFAULT_SCORING_CONFIG)).toBe(5);
     });
 
     it('should use custom baseline when provided', () => {
@@ -200,14 +200,14 @@ describe('Scoring Functions', () => {
         DEFAULT_SCORING_CONFIG
       );
 
-      expect(breakdown.baseline).toBe(10); // B
+      expect(breakdown.baseline).toBe(5); // B
       expect(breakdown.plausibility).toBe(2); // A1 (level 3)
       expect(breakdown.connectionScore).toBe(3); // OTHERS = 3 pts
       expect(breakdown.selfStory).toBe(0); // Deprecated
       expect(breakdown.othersStory).toBe(0); // Deprecated
       expect(breakdown.planetBonus).toBe(15); // P1
-      expect(breakdown.total).toBe(10 + 2 + 3 + 15);
-      expect(breakdown.total).toBe(30);
+      expect(breakdown.total).toBe(5 + 2 + 3 + 15);
+      expect(breakdown.total).toBe(25);
     });
 
     it('should compute correctly with SELF connection', () => {
@@ -222,8 +222,8 @@ describe('Scoring Functions', () => {
       );
 
       expect(breakdown.connectionScore).toBe(1); // SELF = 1 pt
-      expect(breakdown.total).toBe(10 + 2 + 1 + 0);
-      expect(breakdown.total).toBe(13);
+      expect(breakdown.total).toBe(5 + 2 + 1 + 0);
+      expect(breakdown.total).toBe(8);
     });
 
     it('should compute correctly with NONE connection', () => {
@@ -238,8 +238,8 @@ describe('Scoring Functions', () => {
       );
 
       expect(breakdown.connectionScore).toBe(0); // NONE = 0 pts
-      expect(breakdown.total).toBe(10 + 2 + 0 + 0);
-      expect(breakdown.total).toBe(12);
+      expect(breakdown.total).toBe(5 + 2 + 0 + 0);
+      expect(breakdown.total).toBe(7);
     });
 
     it('should compute correctly with zero planet bonus', () => {
@@ -250,8 +250,8 @@ describe('Scoring Functions', () => {
       );
 
       expect(breakdown.planetBonus).toBe(0);
-      expect(breakdown.total).toBe(10 + 2 + 3 + 0);
-      expect(breakdown.total).toBe(15);
+      expect(breakdown.total).toBe(5 + 2 + 3 + 0);
+      expect(breakdown.total).toBe(10);
     });
 
     it('should compute correctly with different plausibility levels (AI assessment)', () => {

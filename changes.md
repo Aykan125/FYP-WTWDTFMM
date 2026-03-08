@@ -1,3 +1,25 @@
+# Pre-fill game with 36 seed headlines from AI history (2022–2025)
+
+## What changed
+
+**Files:** `backend/db/migrations/010_system_player.sql`, `backend/src/game/seedHeadlines.ts`, `backend/src/socket/lobbyHandlers.ts`, `backend/src/game/scoringService.ts`, `frontend/src/components/HeadlineFeed.tsx`, `backend/tests/socket/lobbyHandlers.test.ts`
+
+When a host starts a game, 36 real-world AI news headlines (2022–2025) are now pre-inserted into the session's headline feed. They are attributed to a dedicated "Archive" system player (identified by `is_system = TRUE` on `session_players`). Seeds use `llm_status = 'seed'`, are assigned `round_no = 1`, and have pre-set `in_game_submitted_at` timestamps so they sort chronologically before player submissions. The Archive player and its headlines are filtered out of the player list, leaderboard, and score breakdowns.
+
+## Trade-offs considered
+
+1. **Seed headlines via a separate `seed_headlines` table (not linked to a player):** Cleaner schema separation, but would require schema changes to `game_session_headlines` (nullable `player_id`) and new JOIN logic across multiple query sites. FK constraint removal would make data integrity harder to reason about.
+
+2. **Seed headlines attributed to the host player:** Simpler (no new player row needed), but seeds would show up in the host's score, pollute the leaderboard, and require additional filtering by a `is_seed` flag on every query. Also misleading to the host.
+
+3. **Chosen: dedicated Archive system player (`is_system = TRUE`):** Reuses all existing headline infrastructure unchanged. A single boolean column gates the Archive player out of all player-facing queries. Seeds behave exactly like other headlines for LLM context and round summaries, requiring no special-case handling in those paths.
+
+## Justified rationale
+
+The Archive player approach minimises code surface area while satisfying all constraints: seeds flow through the existing `headline:get_feed` query, appear in LLM context via the no-filter `WHERE session_id = $1` clause, and are visible in round summaries. The `is_system` filter is a one-line addition at each player-facing query site, and the migration is a single `ALTER TABLE` that defaults to `FALSE` — preserving all existing rows and test mocks without modification.
+
+---
+
 # Fix headline in-game date (store at submit time)
 
 ## What changed
