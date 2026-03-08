@@ -172,7 +172,7 @@ export interface ScoringConfig {
  */
 export const DEFAULT_SCORING_CONFIG: ScoringConfig = {
   // Base score for submitting a headline
-  baselineB: 10,
+  baselineB: 5,
 
   // Plausibility scoring (A1 = exact target, A2 = near target)
   plausibilityPoints: {
