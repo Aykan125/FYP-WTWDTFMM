@@ -151,6 +151,9 @@ export function GameLayout({
                 <HeadlineFeed
                   headlines={headlines}
                   currentPlayerId={currentPlayerId}
+                  inGameNow={derivedInGameNow}
+                  serverNow={serverNow}
+                  timelineSpeedRatio={timelineSpeedRatio}
                 />
               </div>
               {phase === 'PLAYING' && (
@@ -178,6 +181,9 @@ export function GameLayout({
               <HeadlineFeed
                 headlines={headlines}
                 currentPlayerId={currentPlayerId}
+                inGameNow={derivedInGameNow}
+                serverNow={serverNow}
+                timelineSpeedRatio={timelineSpeedRatio}
               />
               <ScoreBarChart
                 players={players}
