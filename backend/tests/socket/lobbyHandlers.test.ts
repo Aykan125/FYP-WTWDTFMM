@@ -316,13 +316,26 @@ describe('Lobby Handlers - getSessionState', () => {
         in_game_start_at: new Date(),
       };
 
-      (pool.query as jest.Mock)
-        .mockResolvedValueOnce({ rows: [mockSessionData] }) // getSessionState before
-        .mockResolvedValueOnce({ rows: mockBreakdownRows(['player-1', 'player-2']) }) // breakdowns for getSessionState before
-        .mockResolvedValueOnce({ rowCount: 1 }) // UPDATE planet state for player 1
-        .mockResolvedValueOnce({ rowCount: 1 }) // UPDATE planet state for player 2
-        .mockResolvedValueOnce({ rows: [updatedSessionData] }) // getSessionState after
-        .mockResolvedValueOnce({ rows: mockBreakdownRows(['player-1', 'player-2']) }); // breakdowns for getSessionState after
+      // Build ordered mock responses:
+      // 1. getSessionState before (session query + breakdowns)
+      // 2. UPDATE planet state for each player (2 players)
+      // 3. INSERT Archive player
+      // 4. INSERT 36 seed headlines
+      // 5. getSessionState after (session query + breakdowns)
+      const orderedResponses = [
+        { rows: [mockSessionData] }, // getSessionState before - session
+        { rows: mockBreakdownRows(['player-1', 'player-2']) }, // getSessionState before - breakdowns
+        { rowCount: 1 }, // UPDATE planet state for player 1
+        { rowCount: 1 }, // UPDATE planet state for player 2
+        { rows: [{ id: 'archive-player-id' }] }, // INSERT Archive player
+        ...Array(36).fill({ rowCount: 1 }), // 36 seed headline INSERTs
+        { rows: [updatedSessionData] }, // getSessionState after - session
+        { rows: mockBreakdownRows(['player-1', 'player-2']) }, // getSessionState after - breakdowns
+      ];
+      let callIdx = 0;
+      (pool.query as jest.Mock).mockImplementation(() =>
+        Promise.resolve(orderedResponses[callIdx++] ?? { rows: [] })
+      );
 
       (gameLoopManager.handleHostStartGame as jest.Mock).mockResolvedValueOnce(undefined);
 

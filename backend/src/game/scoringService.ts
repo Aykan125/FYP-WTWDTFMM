@@ -243,7 +243,7 @@ export async function applyHeadlineEvaluation(
     }>(
       `SELECT id, nickname, total_score
        FROM session_players
-       WHERE session_id = $1
+       WHERE session_id = $1 AND is_system = FALSE
        ORDER BY total_score DESC, joined_at ASC`,
       [sessionId]
     );
@@ -292,7 +292,7 @@ export async function getLeaderboard(
   }>(
     `SELECT id, nickname, total_score
      FROM session_players
-     WHERE session_id = $1
+     WHERE session_id = $1 AND is_system = FALSE
      ORDER BY total_score DESC, joined_at ASC`,
     [sessionId]
   );
@@ -371,7 +371,7 @@ export async function getPlayerScoreBreakdowns(
       COALESCE(SUM(h.planet_bonus_score), 0)::int AS planet_bonus
     FROM session_players sp
     LEFT JOIN game_session_headlines h ON h.player_id = sp.id
-    WHERE sp.session_id = $1
+    WHERE sp.session_id = $1 AND sp.is_system = FALSE
     GROUP BY sp.id`,
     [sessionId]
   );

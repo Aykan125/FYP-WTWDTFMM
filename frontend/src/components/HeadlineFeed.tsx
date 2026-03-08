@@ -56,20 +56,24 @@ export function HeadlineFeed({ headlines, currentPlayerId }: HeadlineFeedProps) 
       >
         {displayedHeadlines.map((headline) => {
           const isOwn = headline.playerId === currentPlayerId;
+          const isArchive = headline.playerNickname === 'Archive';
 
           return (
             <div
               key={headline.id}
               className={`px-3 py-2.5 rounded-lg border ${
-                isOwn
+                isArchive
+                  ? 'bg-amber-50/40 border-amber-100'
+                  : isOwn
                   ? 'bg-indigo-50/60 border-indigo-100'
                   : 'bg-gray-50/60 border-gray-100'
               }`}
             >
               <div className="flex justify-between items-center mb-1">
-                <span className={`text-xs font-medium ${isOwn ? 'text-indigo-600' : 'text-gray-500'}`}>
+                <span className={`text-xs font-medium ${isArchive ? 'text-amber-600' : isOwn ? 'text-indigo-600' : 'text-gray-500'}`}>
                   {headline.playerNickname}
-                  {isOwn && <span className="ml-1 text-gray-400">(you)</span>}
+                  {isArchive && <span className="ml-1 text-amber-400">(history)</span>}
+                  {!isArchive && isOwn && <span className="ml-1 text-gray-400">(you)</span>}
                 </span>
                 <span className="text-[11px] text-gray-300">
                   R{headline.roundNo} &middot; {headline.inGameSubmittedAt

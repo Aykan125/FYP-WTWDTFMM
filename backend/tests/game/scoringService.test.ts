@@ -94,7 +94,7 @@ describe('Scoring Service', () => {
       const result = await applyHeadlineEvaluation(basePayload);
 
       // Check breakdown
-      expect(result.breakdown.baseline).toBe(10); // B
+      expect(result.breakdown.baseline).toBe(5); // B
       expect(result.breakdown.plausibility).toBe(2); // A1 (level 3)
       expect(result.breakdown.connectionScore).toBe(3); // OTHERS = 3 pts
       expect(result.breakdown.selfStory).toBe(0); // Deprecated
@@ -103,11 +103,11 @@ describe('Scoring Service', () => {
       // Priority planet could be any of the 8 planets, and it may or may not match AI rankings
       // In tally system: 0 or 3 (flat bonus if matches top-3, else 0)
       expect([0, 3]).toContain(result.breakdown.planetBonus);
-      // Total: 10 + 2 + 3 + (0 or 3) = 15 or 18
-      expect([15, 18]).toContain(result.breakdown.total);
+      // Total: 5 + 2 + 3 + (0 or 3) = 10 or 13
+      expect([10, 13]).toContain(result.breakdown.total);
 
       // Check new total
-      expect([50 + 15, 50 + 18]).toContain(result.newTotalScore);
+      expect([50 + 10, 50 + 13]).toContain(result.newTotalScore);
 
       // Check leaderboard
       expect(result.leaderboard).toHaveLength(2);
@@ -140,8 +140,8 @@ describe('Scoring Service', () => {
       // VENUS is current priority and is in AI rankings at #2
       // Flat +3 bonus for any match in top-3
       expect(result.breakdown.planetBonus).toBe(3);
-      // Total: 10 (baseline) + 2 (plausibility) + 3 (OTHERS) + 3 (planet) = 18
-      expect(result.breakdown.total).toBe(18);
+      // Total: 5 (baseline) + 2 (plausibility) + 3 (OTHERS) + 3 (planet) = 13
+      expect(result.breakdown.total).toBe(13);
     });
 
     it('should throw PLAYER_NOT_FOUND when player does not exist', async () => {
@@ -260,7 +260,7 @@ describe('Scoring Service', () => {
       const params = updateHeadlineCall![1];
 
       // Verify all scoring columns are passed
-      expect(params).toContain(10); // baseline_score
+      expect(params).toContain(5); // baseline_score
       expect(params).toContain(3); // plausibility_level (stored value)
       expect(params).toContain(2); // plausibility_score
       expect(params).toContain('OTHERS'); // others_story_connection_level (now stores connectionType)
@@ -270,8 +270,8 @@ describe('Scoring Service', () => {
       expect(params).toContain('EARTH'); // planet_3
       // Planet bonus is 0 or 3 (flat bonus in new tally system)
       expect(params.some((p: unknown) => p === 0 || p === 3)).toBe(true);
-      // Total: 10 + 2 + 3 + (0 or 3) = 15 or 18
-      expect(params.some((p: unknown) => p === 15 || p === 18)).toBe(true);
+      // Total: 5 + 2 + 3 + (0 or 3) = 10 or 13
+      expect(params.some((p: unknown) => p === 10 || p === 13)).toBe(true);
     });
   });
 
