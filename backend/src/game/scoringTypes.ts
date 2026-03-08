@@ -292,6 +292,7 @@ export interface HeadlineEvaluationResult {
   breakdown: HeadlineScoreBreakdown;
   newTotalScore: number;
   leaderboard: PlayerScoreEntry[];
+  updatedPriorityPlanet: PlanetId | null;
 }
 
 

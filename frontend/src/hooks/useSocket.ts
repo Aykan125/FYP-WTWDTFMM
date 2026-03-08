@@ -198,17 +198,26 @@ export function useSocket(): UseSocketReturn {
     });
 
     // Listen for leaderboard updates (real-time score changes)
-    socket.on('leaderboard:update', (data: { leaderboard: { playerId: string; totalScore: number; scoreBreakdown?: ScoreBreakdown }[] }) => {
+    socket.on('leaderboard:update', (data: {
+      leaderboard: { playerId: string; totalScore: number; scoreBreakdown?: ScoreBreakdown }[];
+      lastScoredHeadline?: { playerId: string; updatedPriorityPlanet?: string | null };
+    }) => {
       console.log('Leaderboard updated:', data);
       setSessionState((prev) => {
         if (!prev) return prev;
         const updatedPlayers = prev.players.map((p) => {
           const entry = data.leaderboard.find((e) => e.playerId === p.id);
           if (!entry) return p;
+          const newPlanet =
+            data.lastScoredHeadline?.playerId === p.id &&
+            data.lastScoredHeadline.updatedPriorityPlanet !== undefined
+              ? data.lastScoredHeadline.updatedPriorityPlanet
+              : p.priorityPlanet;
           return {
             ...p,
             totalScore: entry.totalScore,
             scoreBreakdown: entry.scoreBreakdown ?? p.scoreBreakdown,
+            priorityPlanet: newPlanet,
           };
         });
         return { ...prev, players: updatedPlayers };
