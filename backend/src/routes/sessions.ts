@@ -38,7 +38,7 @@ router.post('/sessions', async (req: Request, res: Response): Promise<void> => {
         )
          VALUES ($1, 'WAITING', $2, $3, $4, $5)
          RETURNING id, join_code, status, created_at, updated_at`,
-        [joinCode, 10, 5, 3, 60.0]
+        [joinCode, 10, 3, 3, 60.0]
       );
       const session = sessionResult.rows[0];
 

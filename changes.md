@@ -1,3 +1,26 @@
+# Per-round variable in-game time speed (ratio 3:5:7)
+
+## What changed
+
+**File:** `backend/src/game/gameLoop.ts`
+
+- Removed the single `timelineSpeedRatio` computed once at game start (uniform across all rounds).
+- Added module-level constants `ROUND_SPEED_WEIGHTS = [3, 5, 7]` and `TOTAL_INGAME_MS`.
+- On each transition to `PLAYING`, the speed ratio is now computed from the round's proportional weight: Round 1 gets 3/15 of 20 years, Round 2 gets 5/15, Round 3 gets 7/15.
+- On transition to `BREAK`, `timelineSpeedRatio` is set to `0` so no in-game time elapses during breaks (accumulation uses the outgoing phase's ratio, which is already correct before this assignment).
+
+## Trade-offs considered
+
+1. **Single ratio (old behaviour):** Simple, but all rounds advance at the same speed — no narrative acceleration toward the far future.
+2. **Per-round ratio stored only in memory:** Could be lost on server restart. Rejected because the ratio is re-derived deterministically from `roundNo` and config on every transition, so it survives restarts via DB reload.
+3. **Store per-round ratios in DB as an array:** More flexible for arbitrary configs, but over-engineered for a fixed 3-round game with a well-known weight array.
+
+## Justified rationale
+
+Option 2 was chosen. Computing the ratio fresh on each phase transition means no new DB columns, no migration, and no schema change — the existing `timeline_speed_ratio` column continues to hold the current phase's ratio as before. This is the minimum-change solution that achieves the desired narrative effect.
+
+---
+
 # Rewrite juror prompt in jurorPrompt.ts
 
 ## What changed

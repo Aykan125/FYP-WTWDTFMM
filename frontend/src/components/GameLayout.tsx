@@ -64,7 +64,7 @@ export function GameLayout({
     inGameNow,
     serverNow,
     timelineSpeedRatio,
-    enabled: inGame,
+    enabled: phase === 'PLAYING',
   });
 
   return (
@@ -151,7 +151,7 @@ export function GameLayout({
                 <HeadlineFeed
                   headlines={headlines}
                   currentPlayerId={currentPlayerId}
-                  inGameNow={derivedInGameNow}
+                  inGameNow={inGameNow}
                   serverNow={serverNow}
                   timelineSpeedRatio={timelineSpeedRatio}
                 />
@@ -181,7 +181,7 @@ export function GameLayout({
               <HeadlineFeed
                 headlines={headlines}
                 currentPlayerId={currentPlayerId}
-                inGameNow={derivedInGameNow}
+                inGameNow={inGameNow}
                 serverNow={serverNow}
                 timelineSpeedRatio={timelineSpeedRatio}
               />

@@ -10,6 +10,9 @@ import { DEFAULT_PLANETS } from './scoringTypes.js';
 import { generateRoundSummary } from './summaryService.js';
 import { getPlayerScoreBreakdowns } from './scoringService.js';
 
+const ROUND_SPEED_WEIGHTS = [3, 5, 7];
+const TOTAL_INGAME_MS = 20 * 365.25 * 24 * 60 * 60 * 1000;
+
 /**
  * Pure function to compute the next phase and round based on current state
  * Exported for testing
@@ -135,17 +138,18 @@ class GameLoopInstance {
 
     if (toPhase === 'PLAYING') {
       if (!inGameStartAt) {
-        // First PLAYING phase: anchor in-game clock to current real date
         inGameStartAt = now;
-        // Compute ratio so game timeline spans exactly 20 years
-        const TWENTY_YEARS_MS = 20 * 365.25 * 24 * 60 * 60 * 1000;
-        const totalGameMs =
-          this.state.maxRounds * this.state.playMinutes * 60_000 +
-          (this.state.maxRounds - 1) * this.state.breakMinutes * 60_000;
-        this.state.timelineSpeedRatio = TWENTY_YEARS_MS / totalGameMs;
       }
+      // Compute speed ratio for this specific round from the weight array
+      const totalWeight = ROUND_SPEED_WEIGHTS.reduce((a, b) => a + b, 0);
+      const roundWeight =
+        ROUND_SPEED_WEIGHTS[roundNo - 1] ??
+        ROUND_SPEED_WEIGHTS[ROUND_SPEED_WEIGHTS.length - 1];
+      const roundInGameMs = (roundWeight / totalWeight) * TOTAL_INGAME_MS;
+      this.state.timelineSpeedRatio = roundInGameMs / (this.state.playMinutes * 60_000);
       phaseEndsAt = new Date(now.getTime() + this.state.playMinutes * 60 * 1000);
     } else if (toPhase === 'BREAK') {
+      this.state.timelineSpeedRatio = 0;
       phaseEndsAt = new Date(now.getTime() + this.state.breakMinutes * 60 * 1000);
     } else if (toPhase === 'FINISHED') {
       phaseStartedAt = now;
