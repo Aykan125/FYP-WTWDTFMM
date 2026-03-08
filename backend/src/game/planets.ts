@@ -55,21 +55,6 @@ export const DEFAULT_PLANETS: PlanetEntry[] = [
     description:
       'Transformation, death and rebirth, hidden forces, secrets, and fundamental change. Headlines about AI causing profound societal transformation.',
   },
-  {
-    id: 'APOLLO',
-    description:
-      'Knowledge, science, medicine, healing, truth, and enlightenment. Headlines about AI in healthcare, research, and scientific discovery.',
-  },
-  {
-    id: 'ATHENA',
-    description:
-      'Wisdom, strategy, education, learning, intelligence, and rational thought. Headlines about AI in education and intellectual pursuits.',
-  },
-  {
-    id: 'HEPHAESTUS',
-    description:
-      'Industry, manufacturing, engineering, craftsmanship, and automation. Headlines about AI in industrial and manufacturing contexts.',
-  },
 ];
 
 /**

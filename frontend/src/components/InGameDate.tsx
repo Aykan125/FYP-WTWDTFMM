@@ -16,7 +16,7 @@ export function InGameDate({ inGameNow }: InGameDateProps) {
 
   return (
     <Card padding="sm">
-      <SectionTitle>Current Period</SectionTitle>
+      <SectionTitle>Current Date</SectionTitle>
       <span className="text-sm font-medium text-gray-700">{formatted}</span>
     </Card>
   );

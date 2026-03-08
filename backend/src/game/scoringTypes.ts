@@ -45,6 +45,7 @@ export const DEFAULT_PLANETS: PlanetId[] = [
   'SATURN',
   'URANUS',
   'NEPTUNE',
+  'PLUTO',
 ];
 
 // ============================================================================
