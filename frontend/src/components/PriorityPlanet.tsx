@@ -4,16 +4,16 @@ interface PriorityPlanetProps {
   planet: string | null;
 }
 
-const PLANET_TAGS: Record<string, [string, string, string]> = {
-  EARTH:   ['Nature', 'Environment', 'Climate'],
-  MARS:    ['War', 'Conflict', 'Military'],
-  MERCURY: ['Communication', 'Media', 'Journalism'],
-  VENUS:   ['Art', 'Beauty', 'Culture'],
-  JUPITER: ['Power', 'Governance', 'Politics'],
-  SATURN:  ['Time', 'Aging', 'Legacy'],
-  NEPTUNE: ['Dreams', 'Spirituality', 'Consciousness'],
-  URANUS:  ['Innovation', 'Revolution', 'Disruption'],
-  PLUTO:   ['Transformation', 'Hidden forces', 'Change'],
+const PLANET_TAGS: Record<string, string[]> = {
+  EARTH:   ['Nature', 'Environment', 'Climate', 'Ecology', 'Sustainability'],
+  MARS:    ['War', 'Conflict', 'Military', 'Defense', 'Security'],
+  MERCURY: ['Communication', 'Media', 'Journalism', 'Networks', 'Information'],
+  VENUS:   ['Art', 'Beauty', 'Culture', 'Entertainment', 'Creativity'],
+  JUPITER: ['Power', 'Governance', 'Politics', 'Leadership', 'Institutions'],
+  SATURN:  ['Time', 'Aging', 'Legacy', 'Tradition', 'History'],
+  NEPTUNE: ['Dreams', 'Spirituality', 'Consciousness', 'Illusion', 'Religion'],
+  URANUS:  ['Innovation', 'Revolution', 'Disruption', 'Technology', 'Breakthroughs'],
+  PLUTO:   ['Transformation', 'Hidden forces', 'Secrets', 'Rebirth', 'Upheaval'],
 };
 
 export function PriorityPlanet({ planet }: PriorityPlanetProps) {
@@ -28,7 +28,7 @@ export function PriorityPlanet({ planet }: PriorityPlanetProps) {
       <SectionTitle>Priority Planet</SectionTitle>
       <div className="flex items-center justify-between">
         <span className="text-sm font-semibold text-violet-700">{planet}</span>
-        <span className="text-xs text-gray-400">+3 bonus</span>
+        <span className="text-xs text-gray-400">+2 bonus</span>
       </div>
       {tags.length > 0 && (
         <div className="flex flex-wrap gap-1 mt-1.5">

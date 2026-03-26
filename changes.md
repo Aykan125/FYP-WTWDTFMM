@@ -1,3 +1,27 @@
+# Weighted planet tallies + 5-word frontend tags
+
+## What changed
+
+**Files:** `backend/src/game/planetWeighting.ts`, `frontend/src/components/PriorityPlanet.tsx`, `backend/tests/game/planetWeighting.test.ts`
+
+1. **Weighted tally increments:** NEPTUNE and PLUTO now increment their tally by +2 (instead of +1) each time the AI assigns them in a headline's top-3. All other planets remain at +1. This makes abstract planets accumulate tally faster → they rise out of the bottom half of the sorted tally → they get selected as priority less often. Simulated effect: NEPTUNE drops from 14.8% → 8.1% as priority; concrete planets (EARTH, MARS, VENUS) fill the gap.
+
+2. **Frontend planet tags expanded from 3 to 5 words:** Gives players more keywords to work with when targeting their priority planet. Also fixed "+3 bonus" label to "+2 bonus" to match the scoring rebalance.
+
+## Trade-offs considered
+
+1. **Global tally (shared across all players):** Would produce a deterministic distribution where the same 5 planets are always priority for everyone. Rejected because 220 headlines wash out all variance — different players would never get different priorities.
+
+2. **Three-tier weights (+1/+2/+3):** More aggressive suppression of abstract planets. PLUTO/NEPTUNE would drop below 3%. Rejected as too extreme — they should still occasionally appear.
+
+3. **Two-tier weights +1/+2 (chosen):** Gentle suppression. NEPTUNE/PLUTO are the only planets weighted at +2 because they are the hardest to intentionally target ("dreams, spirituality" and "hidden forces, transformation"). All other planets including moderately abstract ones (SATURN, URANUS) stay at +1 since the AI's natural frequency already differentiates them.
+
+## Justified rationale
+
+The per-player tally system with ~20 headlines per player has enough variance that the weighted tallies create a gentle bias without being deterministic. The +2 weight for NEPTUNE/PLUTO is the minimum change that produces a meaningful shift in the priority distribution while keeping all planets possible.
+
+---
+
 # Scoring rebalance v2: baseline, connection, planet (post-playtest 1)
 
 ## What changed
