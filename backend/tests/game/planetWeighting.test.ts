@@ -271,7 +271,7 @@ describe('Planet Tally Functions', () => {
       );
 
       expect(result.bonus).toBe(DEFAULT_SCORING_CONFIG.planetBonus.match);
-      expect(result.bonus).toBe(3);
+      expect(result.bonus).toBe(2);
       expect(result.matchRank).toBe(1);
     });
 
@@ -282,7 +282,7 @@ describe('Planet Tally Functions', () => {
         DEFAULT_SCORING_CONFIG
       );
 
-      expect(result.bonus).toBe(3); // Same flat bonus
+      expect(result.bonus).toBe(2); // Same flat bonus
       expect(result.matchRank).toBe(2);
     });
 
@@ -293,7 +293,7 @@ describe('Planet Tally Functions', () => {
         DEFAULT_SCORING_CONFIG
       );
 
-      expect(result.bonus).toBe(3); // Same flat bonus
+      expect(result.bonus).toBe(2); // Same flat bonus
       expect(result.matchRank).toBe(3);
     });
 
@@ -402,7 +402,7 @@ describe('Planet Tally Functions', () => {
         DEFAULT_SCORING_CONFIG
       );
 
-      expect(result.bonus).toBe(3);
+      expect(result.bonus).toBe(2);
       expect(result.matchRank).toBe(1);
       expect(result.usedPlanet).toBe('MARS');
     });
@@ -483,7 +483,7 @@ describe('Planet Tally Functions', () => {
         1,
         DEFAULT_SCORING_CONFIG
       );
-      expect(result.bonus).toBe(3);
+      expect(result.bonus).toBe(2);
       expect(result.updatedState.tally['A']).toBe(1);
       expect(result.updatedState.tally['B']).toBe(1);
       expect(result.updatedState.tally['C']).toBe(1);

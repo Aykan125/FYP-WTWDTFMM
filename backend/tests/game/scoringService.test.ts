@@ -44,7 +44,7 @@ describe('Scoring Service', () => {
       headlineId: 'headline-789',
       plausibilityLevel: 3,
       selectedBand: 3,
-      connectionType: 'OTHERS',
+      uniqueOtherAuthors: 3,
       aiPlanetRankings: ['MARS', 'VENUS', 'EARTH'],
       roundNo: 1,
     };
@@ -94,20 +94,20 @@ describe('Scoring Service', () => {
       const result = await applyHeadlineEvaluation(basePayload);
 
       // Check breakdown
-      expect(result.breakdown.baseline).toBe(5); // B
+      expect(result.breakdown.baseline).toBe(1); // B
       expect(result.breakdown.plausibility).toBe(2); // A1 (level 3)
-      expect(result.breakdown.connectionScore).toBe(3); // OTHERS = 3 pts
+      expect(result.breakdown.connectionScore).toBe(9); // 3 unique others = 9 pts
       expect(result.breakdown.selfStory).toBe(0); // Deprecated
       expect(result.breakdown.othersStory).toBe(0); // Deprecated
       // Planet bonus: With null state, initializes fresh tally with random priority
       // Priority planet could be any of the 8 planets, and it may or may not match AI rankings
-      // In tally system: 0 or 3 (flat bonus if matches top-3, else 0)
-      expect([0, 3]).toContain(result.breakdown.planetBonus);
-      // Total: 5 + 2 + 3 + (0 or 3) = 10 or 13
-      expect([10, 13]).toContain(result.breakdown.total);
+      // In tally system: 0 or 2 (flat bonus if matches top-3, else 0)
+      expect([0, 2]).toContain(result.breakdown.planetBonus);
+      // Total: 1 + 2 + 9 + (0 or 2) = 12 or 14
+      expect([12, 14]).toContain(result.breakdown.total);
 
       // Check new total
-      expect([50 + 10, 50 + 13]).toContain(result.newTotalScore);
+      expect([50 + 12, 50 + 14]).toContain(result.newTotalScore);
 
       // Check leaderboard
       expect(result.leaderboard).toHaveLength(2);
@@ -138,10 +138,10 @@ describe('Scoring Service', () => {
       const result = await applyHeadlineEvaluation(basePayload);
 
       // VENUS is current priority and is in AI rankings at #2
-      // Flat +3 bonus for any match in top-3
-      expect(result.breakdown.planetBonus).toBe(3);
-      // Total: 5 (baseline) + 2 (plausibility) + 3 (OTHERS) + 3 (planet) = 13
-      expect(result.breakdown.total).toBe(13);
+      // Flat +2 bonus for any match in top-3
+      expect(result.breakdown.planetBonus).toBe(2);
+      // Total: 1 (baseline) + 2 (plausibility) + 9 (3 unique others) + 2 (planet) = 14
+      expect(result.breakdown.total).toBe(14);
     });
 
     it('should throw PLAYER_NOT_FOUND when player does not exist', async () => {
@@ -260,18 +260,18 @@ describe('Scoring Service', () => {
       const params = updateHeadlineCall![1];
 
       // Verify all scoring columns are passed
-      expect(params).toContain(5); // baseline_score
+      expect(params).toContain(1); // baseline_score
       expect(params).toContain(3); // plausibility_level (stored value)
       expect(params).toContain(2); // plausibility_score
-      expect(params).toContain('OTHERS'); // others_story_connection_level (now stores connectionType)
-      expect(params).toContain(3); // others_story_score (now stores connectionScore)
+      expect(params).toContain('3'); // others_story_connection_level (unique other author count as string)
+      expect(params).toContain(9); // others_story_score (connection score for 3 unique others)
       expect(params).toContain('MARS'); // planet_1
       expect(params).toContain('VENUS'); // planet_2
       expect(params).toContain('EARTH'); // planet_3
-      // Planet bonus is 0 or 3 (flat bonus in new tally system)
-      expect(params.some((p: unknown) => p === 0 || p === 3)).toBe(true);
-      // Total: 5 + 2 + 3 + (0 or 3) = 10 or 13
-      expect(params.some((p: unknown) => p === 10 || p === 13)).toBe(true);
+      // Planet bonus is 0 or 2 (flat bonus in tally system)
+      expect(params.some((p: unknown) => p === 0 || p === 2)).toBe(true);
+      // Total: 1 + 2 + 9 + (0 or 2) = 12 or 14
+      expect(params.some((p: unknown) => p === 12 || p === 14)).toBe(true);
     });
   });
 

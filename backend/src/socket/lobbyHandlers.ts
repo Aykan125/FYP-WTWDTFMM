@@ -7,7 +7,7 @@ import { transformHeadline, LinkedHeadline } from '../game/headlineTransformatio
 import { getDefaultPlanets } from '../game/planets.js';
 import { HeadlineEntry } from '../llm/jurorPrompt.js';
 import { applyHeadlineEvaluation, getPlayerScoreBreakdowns } from '../game/scoringService.js';
-import { ConnectionScoreType, PlausibilityLevel, DEFAULT_PLANETS } from '../game/scoringTypes.js';
+import { PlausibilityLevel, DEFAULT_PLANETS } from '../game/scoringTypes.js';
 import { migratePlanetState, initialPlanetTallyState, selectPriorityPlanet } from '../game/planetWeighting.js';
 import { getRoundSummary, getSessionIdFromJoinCode } from '../game/summaryService.js';
 import { SEED_HEADLINES } from '../game/seedHeadlines.js';
@@ -18,28 +18,26 @@ const lastHeadlineSubmission: Map<string, number> = new Map();
 const HEADLINE_COOLDOWN_MS = 60_000; // 1 minute
 
 /**
- * Derive connection score type from linked headlines using DB lookup.
+ * Count unique other authors from STRONG linked headlines using DB lookup.
  *
- * Uses mutually exclusive scoring:
- * - OTHERS: If ANY STRONG connection belongs to another player → +3 pts
- * - SELF: Else if ANY STRONG connection belongs to player's own headlines → +1 pt
- * - NONE: No STRONG connections → 0 pts
+ * Looks at only STRONG connections, finds who wrote each linked headline,
+ * and counts how many distinct other players (not the submitter) are represented.
  *
  * @param linkedHeadlines - Array of linked headlines from LLM
  * @param sessionId - Session ID to query DB for headline owners
  * @param currentPlayerId - The player who submitted the headline
- * @returns ConnectionScoreType (OTHERS/SELF/NONE)
+ * @returns Number of unique other authors (0-3)
  */
-async function deriveConnectionScore(
+async function deriveUniqueOtherAuthorCount(
   linkedHeadlines: LinkedHeadline[],
   sessionId: string,
   currentPlayerId: string
-): Promise<ConnectionScoreType> {
+): Promise<number> {
   // Filter to STRONG connections only
   const strongConnections = linkedHeadlines.filter((h) => h.strength === 'STRONG');
 
   if (strongConnections.length === 0) {
-    return 'NONE';
+    return 0;
   }
 
   // Extract headline texts to look up in DB
@@ -55,33 +53,18 @@ async function deriveConnectionScore(
       [sessionId, headlineTexts]
     );
 
-    // Check if any connection is to another player
-    let hasOthersConnection = false;
-    let hasSelfConnection = false;
-
+    // Collect unique other player IDs
+    const otherAuthors = new Set<string>();
     for (const row of result.rows) {
       if (row.player_id !== currentPlayerId) {
-        hasOthersConnection = true;
-        break; // OTHERS takes priority, no need to check further
-      } else {
-        hasSelfConnection = true;
+        otherAuthors.add(row.player_id);
       }
     }
 
-    // Mutually exclusive: OTHERS > SELF > NONE
-    if (hasOthersConnection) {
-      return 'OTHERS';
-    }
-    if (hasSelfConnection) {
-      return 'SELF';
-    }
-
-    // Strong connections found by LLM but not matched in DB - treat as NONE
-    return 'NONE';
+    return Math.min(otherAuthors.size, 3);
   } catch (error) {
     console.error('Error querying headline owners for connection scoring:', error);
-    // On error, fall back to NONE (conservative approach)
-    return 'NONE';
+    return 0;
   }
 }
 
@@ -718,7 +701,7 @@ export function setupLobbyHandlers(io: Server): void {
 
         // Apply scoring asynchronously (don't block the response)
         try {
-          const connectionType = await deriveConnectionScore(
+          const uniqueOtherAuthors = await deriveUniqueOtherAuthorCount(
             transformResult.linked,
             sessionState.id,
             playerId
@@ -730,7 +713,7 @@ export function setupLobbyHandlers(io: Server): void {
             headlineId: insertedRow.id,
             plausibilityLevel: transformResult.plausibility.band as PlausibilityLevel,
             selectedBand: transformResult.selectedBand as PlausibilityLevel,
-            connectionType,
+            uniqueOtherAuthors,
             aiPlanetRankings: transformResult.planets.top3.map((p) => p.id),
             roundNo: sessionState.currentRound,
           });
@@ -759,7 +742,7 @@ export function setupLobbyHandlers(io: Server): void {
             `Scoring for ${player.nickname}: ` +
             `baseline=${scoringResult.breakdown.baseline} + ` +
             `plausibility=${scoringResult.breakdown.plausibility} (band ${transformResult.plausibility.band}) + ` +
-            `connection=${scoringResult.breakdown.connectionScore} (${connectionType}) + ` +
+            `connection=${scoringResult.breakdown.connectionScore} (${uniqueOtherAuthors} unique others) + ` +
             `planet=${scoringResult.breakdown.planetBonus} ` +
             `= +${scoringResult.breakdown.total} pts (total: ${scoringResult.newTotalScore})`
           );
