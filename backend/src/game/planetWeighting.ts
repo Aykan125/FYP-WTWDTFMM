@@ -17,6 +17,18 @@ import {
   LegacyPlanetUsageEntry,
 } from './scoringTypes.js';
 
+/**
+ * Tally weight per planet — higher weight means the tally grows faster,
+ * which makes the planet less likely to be selected as priority.
+ * Abstract/hard-to-target planets get higher weights so they appear
+ * as priority less often.
+ */
+export const PLANET_TALLY_WEIGHTS: Record<string, number> = {
+  MERCURY: 1, VENUS: 1, EARTH: 1, MARS: 1,
+  JUPITER: 1, SATURN: 1, URANUS: 1,
+  NEPTUNE: 2, PLUTO: 2,
+};
+
 // ============================================================================
 // Re-exports for backwards compatibility
 // ============================================================================
@@ -249,7 +261,8 @@ export function updatePlanetTally(
   const newTally = { ...state.tally };
 
   for (const planet of aiTop3.slice(0, 3)) {
-    newTally[planet] = (newTally[planet] ?? 0) + 1;
+    const weight = PLANET_TALLY_WEIGHTS[planet] ?? 1;
+    newTally[planet] = (newTally[planet] ?? 0) + weight;
   }
 
   return {

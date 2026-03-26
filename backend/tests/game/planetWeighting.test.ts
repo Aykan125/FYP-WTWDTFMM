@@ -253,6 +253,61 @@ describe('Planet Tally Functions', () => {
     });
   });
 
+  describe('updatePlanetTally weighted', () => {
+    it('should apply weight 2 for NEPTUNE and PLUTO', () => {
+      const state: PlanetTallyState = {
+        tally: { MARS: 0, NEPTUNE: 0, PLUTO: 0 },
+        previousPriority: null,
+        currentPriority: 'MARS',
+      };
+
+      const newState = updatePlanetTally(state, ['MARS', 'NEPTUNE', 'PLUTO']);
+
+      expect(newState.tally['MARS']).toBe(1);     // weight 1
+      expect(newState.tally['NEPTUNE']).toBe(2);   // weight 2
+      expect(newState.tally['PLUTO']).toBe(2);     // weight 2
+    });
+
+    it('should apply weight 1 for concrete planets', () => {
+      const state: PlanetTallyState = {
+        tally: { MERCURY: 0, JUPITER: 0, EARTH: 0 },
+        previousPriority: null,
+        currentPriority: 'MERCURY',
+      };
+
+      const newState = updatePlanetTally(state, ['MERCURY', 'JUPITER', 'EARTH']);
+
+      expect(newState.tally['MERCURY']).toBe(1);
+      expect(newState.tally['JUPITER']).toBe(1);
+      expect(newState.tally['EARTH']).toBe(1);
+    });
+
+    it('should accumulate weighted tallies over multiple updates', () => {
+      let state: PlanetTallyState = {
+        tally: { MARS: 0, PLUTO: 0 },
+        previousPriority: null,
+        currentPriority: 'MARS',
+      };
+
+      state = updatePlanetTally(state, ['MARS', 'PLUTO']);
+      state = updatePlanetTally(state, ['MARS', 'PLUTO']);
+
+      expect(state.tally['MARS']).toBe(2);   // 2 × weight 1
+      expect(state.tally['PLUTO']).toBe(4);  // 2 × weight 2
+    });
+
+    it('should default to weight 1 for unknown planets', () => {
+      const state: PlanetTallyState = {
+        tally: { UNKNOWN: 0 },
+        previousPriority: null,
+        currentPriority: null,
+      };
+
+      const newState = updatePlanetTally(state, ['UNKNOWN']);
+      expect(newState.tally['UNKNOWN']).toBe(1);
+    });
+  });
+
   describe('applyPlanetUsage (legacy, no-op)', () => {
     it('should return the same state (no-op in new system)', () => {
       const state = initialPlanetTallyState(['A', 'B']);
