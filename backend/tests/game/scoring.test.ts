@@ -16,13 +16,12 @@ import {
   ScoringConfig,
   PlausibilityLevel,
   HeadlineScoringInput,
-  ConnectionScoreType,
 } from '../../src/game/scoringTypes';
 
 describe('Scoring Functions', () => {
   describe('computeBaselineScore', () => {
     it('should return the baseline score from config', () => {
-      expect(computeBaselineScore(DEFAULT_SCORING_CONFIG)).toBe(5);
+      expect(computeBaselineScore(DEFAULT_SCORING_CONFIG)).toBe(1);
     });
 
     it('should use custom baseline when provided', () => {
@@ -142,44 +141,42 @@ describe('Scoring Functions', () => {
   });
 
   describe('computeConnectionScore', () => {
-    it('should return 3 points for OTHERS connection', () => {
-      const score = computeConnectionScore('OTHERS', DEFAULT_SCORING_CONFIG);
-      expect(score).toBe(3);
+    it('should return 0 points for 0 unique other authors', () => {
+      expect(computeConnectionScore(0, DEFAULT_SCORING_CONFIG)).toBe(0);
     });
 
-    it('should return 1 point for SELF connection', () => {
-      const score = computeConnectionScore('SELF', DEFAULT_SCORING_CONFIG);
-      expect(score).toBe(1);
+    it('should return 1 point for 1 unique other author', () => {
+      expect(computeConnectionScore(1, DEFAULT_SCORING_CONFIG)).toBe(1);
     });
 
-    it('should return 0 points for NONE connection', () => {
-      const score = computeConnectionScore('NONE', DEFAULT_SCORING_CONFIG);
-      expect(score).toBe(0);
+    it('should return 4 points for 2 unique other authors', () => {
+      expect(computeConnectionScore(2, DEFAULT_SCORING_CONFIG)).toBe(4);
+    });
+
+    it('should return 9 points for 3 unique other authors', () => {
+      expect(computeConnectionScore(3, DEFAULT_SCORING_CONFIG)).toBe(9);
+    });
+
+    it('should cap at 3 for values above 3', () => {
+      expect(computeConnectionScore(4, DEFAULT_SCORING_CONFIG)).toBe(9);
+      expect(computeConnectionScore(10, DEFAULT_SCORING_CONFIG)).toBe(9);
+    });
+
+    it('should handle negative values as 0', () => {
+      expect(computeConnectionScore(-1, DEFAULT_SCORING_CONFIG)).toBe(0);
     });
 
     it('should work with custom config', () => {
       const customConfig: ScoringConfig = {
         ...DEFAULT_SCORING_CONFIG,
         connectionPoints: {
-          others: 10,
-          self: 5,
-          none: 0,
+          scale: [0, 2, 6, 12],
         },
       };
-      expect(computeConnectionScore('OTHERS', customConfig)).toBe(10);
-      expect(computeConnectionScore('SELF', customConfig)).toBe(5);
-      expect(computeConnectionScore('NONE', customConfig)).toBe(0);
-    });
-
-    it('should handle all ConnectionScoreType values', () => {
-      const types: ConnectionScoreType[] = ['OTHERS', 'SELF', 'NONE'];
-      const expectedScores = [3, 1, 0];
-
-      types.forEach((type, index) => {
-        expect(computeConnectionScore(type, DEFAULT_SCORING_CONFIG)).toBe(
-          expectedScores[index]
-        );
-      });
+      expect(computeConnectionScore(0, customConfig)).toBe(0);
+      expect(computeConnectionScore(1, customConfig)).toBe(2);
+      expect(computeConnectionScore(2, customConfig)).toBe(6);
+      expect(computeConnectionScore(3, customConfig)).toBe(12);
     });
   });
 
@@ -187,59 +184,63 @@ describe('Scoring Functions', () => {
     const baseInput: HeadlineScoringInput = {
       plausibilityLevel: 3,
       selectedBand: 3,
-      connectionType: 'OTHERS',
+      uniqueOtherAuthors: 3,
       aiPlanetRankings: ['MARS', 'VENUS', 'EARTH'],
       roundNo: 1,
     };
 
-    it('should compute correct total with OTHERS connection', () => {
-      const planetBonus = 15; // P1
+    it('should compute correct total with 3 unique other authors (max)', () => {
+      const planetBonus = 2;
       const breakdown = computeHeadlineScore(
         baseInput,
         planetBonus,
         DEFAULT_SCORING_CONFIG
       );
 
-      expect(breakdown.baseline).toBe(5); // B
+      expect(breakdown.baseline).toBe(1); // B
       expect(breakdown.plausibility).toBe(2); // A1 (level 3)
-      expect(breakdown.connectionScore).toBe(3); // OTHERS = 3 pts
+      expect(breakdown.connectionScore).toBe(9); // 3 unique others
       expect(breakdown.selfStory).toBe(0); // Deprecated
       expect(breakdown.othersStory).toBe(0); // Deprecated
-      expect(breakdown.planetBonus).toBe(15); // P1
-      expect(breakdown.total).toBe(5 + 2 + 3 + 15);
-      expect(breakdown.total).toBe(25);
+      expect(breakdown.planetBonus).toBe(2);
+      expect(breakdown.total).toBe(1 + 2 + 9 + 2);
+      expect(breakdown.total).toBe(14);
     });
 
-    it('should compute correctly with SELF connection', () => {
-      const selfInput: HeadlineScoringInput = {
+    it('should compute correctly with 2 unique other authors', () => {
+      const input: HeadlineScoringInput = {
         ...baseInput,
-        connectionType: 'SELF',
+        uniqueOtherAuthors: 2,
       };
-      const breakdown = computeHeadlineScore(
-        selfInput,
-        0,
-        DEFAULT_SCORING_CONFIG
-      );
+      const breakdown = computeHeadlineScore(input, 0, DEFAULT_SCORING_CONFIG);
 
-      expect(breakdown.connectionScore).toBe(1); // SELF = 1 pt
-      expect(breakdown.total).toBe(5 + 2 + 1 + 0);
-      expect(breakdown.total).toBe(8);
-    });
-
-    it('should compute correctly with NONE connection', () => {
-      const noneInput: HeadlineScoringInput = {
-        ...baseInput,
-        connectionType: 'NONE',
-      };
-      const breakdown = computeHeadlineScore(
-        noneInput,
-        0,
-        DEFAULT_SCORING_CONFIG
-      );
-
-      expect(breakdown.connectionScore).toBe(0); // NONE = 0 pts
-      expect(breakdown.total).toBe(5 + 2 + 0 + 0);
+      expect(breakdown.connectionScore).toBe(4); // 2 unique others
+      expect(breakdown.total).toBe(1 + 2 + 4 + 0);
       expect(breakdown.total).toBe(7);
+    });
+
+    it('should compute correctly with 1 unique other author', () => {
+      const input: HeadlineScoringInput = {
+        ...baseInput,
+        uniqueOtherAuthors: 1,
+      };
+      const breakdown = computeHeadlineScore(input, 0, DEFAULT_SCORING_CONFIG);
+
+      expect(breakdown.connectionScore).toBe(1); // 1 unique other
+      expect(breakdown.total).toBe(1 + 2 + 1 + 0);
+      expect(breakdown.total).toBe(4);
+    });
+
+    it('should compute correctly with 0 unique other authors', () => {
+      const input: HeadlineScoringInput = {
+        ...baseInput,
+        uniqueOtherAuthors: 0,
+      };
+      const breakdown = computeHeadlineScore(input, 0, DEFAULT_SCORING_CONFIG);
+
+      expect(breakdown.connectionScore).toBe(0); // 0 unique others
+      expect(breakdown.total).toBe(1 + 2 + 0 + 0);
+      expect(breakdown.total).toBe(3);
     });
 
     it('should compute correctly with zero planet bonus', () => {
@@ -250,12 +251,11 @@ describe('Scoring Functions', () => {
       );
 
       expect(breakdown.planetBonus).toBe(0);
-      expect(breakdown.total).toBe(5 + 2 + 3 + 0);
-      expect(breakdown.total).toBe(10);
+      expect(breakdown.total).toBe(1 + 2 + 9 + 0);
+      expect(breakdown.total).toBe(12);
     });
 
     it('should compute correctly with different plausibility levels (AI assessment)', () => {
-      // Scoring is based on plausibilityLevel (AI assessment), not selectedBand (dice roll)
       const inputLevel1: HeadlineScoringInput = {
         ...baseInput,
         plausibilityLevel: 1,
@@ -282,39 +282,26 @@ describe('Scoring Functions', () => {
       const customConfig: ScoringConfig = {
         ...DEFAULT_SCORING_CONFIG,
         baselineB: 5,
-        connectionPoints: { others: 10, self: 5, none: 0 },
+        connectionPoints: { scale: [0, 2, 6, 12] },
       };
 
       const breakdown = computeHeadlineScore(baseInput, 10, customConfig);
 
       expect(breakdown.baseline).toBe(5);
-      expect(breakdown.connectionScore).toBe(10); // OTHERS with custom config
-      expect(breakdown.total).toBe(5 + 2 + 10 + 10);
-      expect(breakdown.total).toBe(27);
+      expect(breakdown.connectionScore).toBe(12); // 3 unique others with custom scale
+      expect(breakdown.total).toBe(5 + 2 + 12 + 10);
+      expect(breakdown.total).toBe(29);
     });
 
-    it('should have mutually exclusive connection scoring', () => {
-      // Connection score can only be 0, 1, or 3 (never combined)
-      const othersBreakdown = computeHeadlineScore(
-        { ...baseInput, connectionType: 'OTHERS' },
-        0,
-        DEFAULT_SCORING_CONFIG
+    it('should scale connection score with unique other author count', () => {
+      const scores = [0, 1, 2, 3].map((n) =>
+        computeHeadlineScore(
+          { ...baseInput, uniqueOtherAuthors: n },
+          0,
+          DEFAULT_SCORING_CONFIG
+        ).connectionScore
       );
-      expect(othersBreakdown.connectionScore).toBe(3);
-
-      const selfBreakdown = computeHeadlineScore(
-        { ...baseInput, connectionType: 'SELF' },
-        0,
-        DEFAULT_SCORING_CONFIG
-      );
-      expect(selfBreakdown.connectionScore).toBe(1);
-
-      const noneBreakdown = computeHeadlineScore(
-        { ...baseInput, connectionType: 'NONE' },
-        0,
-        DEFAULT_SCORING_CONFIG
-      );
-      expect(noneBreakdown.connectionScore).toBe(0);
+      expect(scores).toEqual([0, 1, 4, 9]);
     });
   });
 
@@ -348,4 +335,3 @@ describe('Scoring Functions', () => {
     });
   });
 });
-

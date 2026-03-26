@@ -20,10 +20,9 @@ export type PlausibilityLevel = 1 | 2 | 3 | 4 | 5;
 export type StoryConnectionLevel = 'LOW' | 'MEDIUM' | 'HIGH';
 
 /**
- * Connection score type for the simplified mutually exclusive scoring model.
- * - OTHERS: Headline connects to another player's headline (+3 pts)
- * - SELF: Headline connects only to own previous headlines (+1 pt)
- * - NONE: No strong connections found (0 pts)
+ * Connection score type for the old mutually exclusive scoring model.
+ * @deprecated Use uniqueOtherAuthors (number 0-3) instead.
+ * Kept for backwards compatibility with existing DB rows.
  */
 export type ConnectionScoreType = 'OTHERS' | 'SELF' | 'NONE';
 
@@ -79,16 +78,12 @@ export interface StoryConnectionConfig {
 }
 
 /**
- * Configuration for connection scoring (simplified model).
- * Mutually exclusive: only one of these can apply per headline.
+ * Configuration for connection scoring based on unique other author count.
+ * Points scale with how many distinct other players' headlines you connect to.
  */
 export interface ConnectionPointsConfig {
-  /** Points when connected to another player's headline */
-  others: number;
-  /** Points when connected only to own headlines */
-  self: number;
-  /** Points when no strong connections (always 0) */
-  none: number;
+  /** Points by unique other author count: index = count (0, 1, 2, 3) */
+  scale: [number, number, number, number];
 }
 
 /**
@@ -173,7 +168,7 @@ export interface ScoringConfig {
  */
 export const DEFAULT_SCORING_CONFIG: ScoringConfig = {
   // Base score for submitting a headline
-  baselineB: 5,
+  baselineB: 1,
 
   // Plausibility scoring (A1 = exact target, A2 = near target)
   plausibilityPoints: {
@@ -198,11 +193,9 @@ export const DEFAULT_SCORING_CONFIG: ScoringConfig = {
     HIGH: 12,
   },
 
-  // Connection scoring (simplified model)
+  // Connection scoring: points by unique other author count (0/1/2/3)
   connectionPoints: {
-    others: 3, // Connected to another player's headline
-    self: 1,   // Connected only to own headlines
-    none: 0,   // No strong connections
+    scale: [0, 1, 4, 9],
   },
 
   // Planet bonus (P1/P2/P3) - deprecated, kept for backwards compatibility
@@ -214,7 +207,7 @@ export const DEFAULT_SCORING_CONFIG: ScoringConfig = {
 
   // Planet bonus (tally-based system) - flat bonus when priority matches
   planetBonus: {
-    match: 3, // Flat +3 when priority planet is anywhere in AI's top-3
+    match: 2, // Flat +2 when priority planet is anywhere in AI's top-3
   },
 
   // @deprecated - No longer used in tally-based system
@@ -234,11 +227,13 @@ export interface HeadlineScoringInput {
   plausibilityLevel: PlausibilityLevel;
   /** Selected band from dice roll (1-5) - used for scoring */
   selectedBand: PlausibilityLevel;
-  /** Connection type for simplified scoring (OTHERS/SELF/NONE) */
-  connectionType: ConnectionScoreType;
-  /** @deprecated Use connectionType instead */
+  /** Number of unique other authors from STRONG linked headlines (0-3) */
+  uniqueOtherAuthors: number;
+  /** @deprecated Use uniqueOtherAuthors instead */
+  connectionType?: ConnectionScoreType;
+  /** @deprecated Use uniqueOtherAuthors instead */
   selfStoryConnection?: StoryConnectionLevel;
-  /** @deprecated Use connectionType instead */
+  /** @deprecated Use uniqueOtherAuthors instead */
   othersStoryConnection?: StoryConnectionLevel;
   /** AI's top-3 planet classifications for this headline */
   aiPlanetRankings: PlanetId[];
@@ -254,7 +249,7 @@ export interface HeadlineScoreBreakdown {
   baseline: number;
   /** Plausibility points (A1/A2/other) */
   plausibility: number;
-  /** Connection score (0/1/3 based on NONE/SELF/OTHERS) */
+  /** Connection score (0/1/4/9 based on unique other author count 0/1/2/3) */
   connectionScore: number;
   /** @deprecated Kept for backwards compatibility, always 0 */
   selfStory: number;

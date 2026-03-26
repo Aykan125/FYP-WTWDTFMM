@@ -6,12 +6,10 @@
 import {
   PlausibilityLevel,
   StoryConnectionLevel,
-  ConnectionScoreType,
   ScoringConfig,
   HeadlineScoringInput,
   HeadlineScoreBreakdown,
   StoryConnectionConfig,
-  ConnectionPointsConfig,
 } from './scoringTypes.js';
 
 // ============================================================================
@@ -81,23 +79,24 @@ export function computeStoryConnectionScore(
 }
 
 /**
- * Compute connection score using the simplified mutually exclusive model.
+ * Compute connection score based on unique other author count.
  *
- * Scoring logic:
- * - OTHERS: Connected to another player's headline → max points (default: 3)
- * - SELF: Connected only to own headlines → partial points (default: 1)
- * - NONE: No strong connections → 0 points
+ * Scoring logic (default scale [0, 1, 4, 9]):
+ * - 0 unique other authors → 0 pts
+ * - 1 unique other author  → 1 pt
+ * - 2 unique other authors → 4 pts
+ * - 3 unique other authors → 9 pts
  *
- * @param connectionType - The type of connection (OTHERS/SELF/NONE)
+ * @param uniqueOtherAuthors - Count of unique other authors from STRONG links (0-3)
  * @param config - Scoring configuration
- * @returns Connection score (0, 1, or 3 by default)
+ * @returns Connection score
  */
 export function computeConnectionScore(
-  connectionType: ConnectionScoreType,
+  uniqueOtherAuthors: number,
   config: ScoringConfig
 ): number {
-  const { connectionPoints } = config;
-  return connectionPoints[connectionType.toLowerCase() as keyof ConnectionPointsConfig];
+  const idx = Math.min(Math.max(uniqueOtherAuthors, 0), 3);
+  return config.connectionPoints.scale[idx] ?? 0;
 }
 
 // ============================================================================
@@ -140,8 +139,8 @@ export function computeHeadlineScore(
     config
   );
 
-  // Use new simplified connection scoring
-  const connectionScore = computeConnectionScore(input.connectionType, config);
+  // Connection scoring based on unique other author count
+  const connectionScore = computeConnectionScore(input.uniqueOtherAuthors, config);
 
   const total = baseline + plausibility + connectionScore + planetBonus;
 

@@ -64,14 +64,15 @@ jest.mock('../../src/game/planets', () => ({
 jest.mock('../../src/game/scoringService', () => ({
   applyHeadlineEvaluation: jest.fn().mockResolvedValue({
     breakdown: {
-      baseline: 10,
-      plausibility: 20,
-      selfStory: 5,
-      othersStory: 8,
-      planetBonus: 10,
-      total: 53,
+      baseline: 1,
+      plausibility: 2,
+      selfStory: 0,
+      othersStory: 0,
+      connectionScore: 9,
+      planetBonus: 2,
+      total: 14,
     },
-    newTotalScore: 53,
+    newTotalScore: 14,
     leaderboard: [
       { playerId: 'player-1', nickname: 'Alice', totalScore: 53, rank: 1 },
     ],

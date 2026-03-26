@@ -1,3 +1,34 @@
+# Scoring rebalance v2: baseline, connection, planet (post-playtest 1)
+
+## What changed
+
+**Files:** `backend/src/game/scoringTypes.ts`, `backend/src/game/scoring.ts`, `backend/src/socket/lobbyHandlers.ts`, `backend/src/game/scoringService.ts`, plus all related test files.
+
+Four scoring changes based on playtest 1 data (session UD0T2Q, 11 players, 218 headlines):
+
+| Component | Old | New | Reason |
+|---|---|---|---|
+| Baseline | 5 | **1** | Was 45.4% of all points — volume beat quality |
+| Self-connection | 1 | **removed** | Scored 0 total across all 218 headlines — dead mechanic |
+| Other-connection | flat 3 | **1/4/9** by unique STRONG-linked other authors (0→0, 1→1, 2→4, 3→9) | 84.9% of headlines got the same 3 pts regardless of author diversity |
+| Planet bonus | 3 | **2** | 75.7% hit rate was too generous |
+
+The connection system was also restructured: `deriveConnectionScore()` (which returned a categorical `'OTHERS'|'SELF'|'NONE'`) was replaced by `deriveUniqueOtherAuthorCount()`, which counts distinct other player IDs from STRONG linked headlines and returns a number 0-3. The `ConnectionPointsConfig` interface changed from `{ others, self, none }` to `{ scale: [0, 1, 4, 9] }`.
+
+## Trade-offs considered
+
+1. **Count unique authors from all links (STRONG + WEAK):** Would give 40.8% of headlines the 9-point tier. Rejected because WEAK connections are too loose — rewarding them equally dilutes the quality signal.
+
+2. **Count unique authors from STRONG links only (chosen):** With current AI output, only 3.2% of headlines get 3 unique STRONG-linked other authors; 35.3% get 2. This creates a meaningful skill gradient where connecting strongly to diverse players is rare and highly rewarded.
+
+3. **Keep the categorical enum and add a count alongside:** More backwards-compatible but introduces redundancy. The old `SELF` category is removed and `OTHERS` is split into 3 tiers, so the enum no longer maps to the new semantics.
+
+## Justified rationale
+
+Option 2 uses the n-squared scaling (1/4/9) to make author diversity the dominant skill signal. Combined with baseline 5→1, the ratio of skill-based to guaranteed points shifts from 55:45 to approximately 93:7 at the max. The DB column `others_story_connection_level` now stores the unique author count as a string ("0"/"1"/"2"/"3") instead of the old category; existing rows with old string values are unaffected since scores are already computed and stored in `others_story_score`.
+
+---
+
 # Fix: Priority planet only rotates on a hit
 
 ## What changed

@@ -91,7 +91,7 @@ export async function applyHeadlineEvaluation(
     headlineId,
     plausibilityLevel,
     selectedBand,
-    connectionType,
+    uniqueOtherAuthors,
     aiPlanetRankings,
     roundNo,
   } = payload;
@@ -178,7 +178,7 @@ export async function applyHeadlineEvaluation(
       {
         plausibilityLevel,
         selectedBand,
-        connectionType,
+        uniqueOtherAuthors,
         aiPlanetRankings,
         roundNo,
       },
@@ -187,8 +187,8 @@ export async function applyHeadlineEvaluation(
     );
 
     // Step 6: Update headline with scoring breakdown
-    // Note: Using others_story_connection_level to store connectionType
-    // and others_story_score to store connectionScore for backwards compatibility
+    // Note: others_story_connection_level stores unique other author count
+    // and others_story_score stores the connection score for backwards compatibility
     const [planet1, planet2, planet3] = aiPlanetRankings.slice(0, 3);
 
     await client.query(
@@ -213,7 +213,7 @@ export async function applyHeadlineEvaluation(
         plausibilityLevel,
         selectedBand,
         breakdown.plausibility,
-        connectionType,
+        String(uniqueOtherAuthors),
         breakdown.connectionScore,
         planet1 ?? null,
         planet2 ?? null,
