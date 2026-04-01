@@ -58,10 +58,12 @@ export function HeadlineFeed({ headlines, currentPlayerId }: HeadlineFeedProps) 
           const isOwn = headline.playerId === currentPlayerId;
           const isArchive = headline.playerNickname === 'Archive';
 
+          const hasScore = headline.totalScore != null;
+
           return (
             <div
               key={headline.id}
-              className={`px-3 py-2.5 rounded-lg border ${
+              className={`group relative px-3 py-2.5 rounded-lg border ${
                 isArchive
                   ? 'bg-amber-50/40 border-amber-100'
                   : isOwn
@@ -84,6 +86,15 @@ export function HeadlineFeed({ headlines, currentPlayerId }: HeadlineFeedProps) 
               <p className="text-sm text-gray-800 leading-relaxed">
                 &ldquo;{headline.text}&rdquo;
               </p>
+              {hasScore && (
+                <div className="hidden group-hover:flex items-center gap-2 mt-1.5 pt-1.5 border-t border-gray-100/60 text-[10px]">
+                  <span className="text-gray-400">+{headline.baselineScore}</span>
+                  <span className="text-indigo-500">+{headline.plausibilityScore} plaus</span>
+                  <span className="text-emerald-500">+{headline.connectionScore} conn</span>
+                  <span className="text-violet-500">+{headline.planetBonusScore} planet</span>
+                  <span className="ml-auto font-semibold text-gray-600">= {headline.totalScore} pts</span>
+                </div>
+              )}
             </div>
           );
         })}

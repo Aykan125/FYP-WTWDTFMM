@@ -47,6 +47,12 @@ export interface Headline {
   text: string;
   createdAt: string;
   inGameSubmittedAt: string | null;
+  baselineScore?: number | null;
+  plausibilityScore?: number | null;
+  connectionScore?: number | null;
+  planetBonusScore?: number | null;
+  totalScore?: number | null;
+  planets?: string[];
 }
 
 export interface HighlightedHeadline {
@@ -200,7 +206,12 @@ export function useSocket(): UseSocketReturn {
     // Listen for leaderboard updates (real-time score changes)
     socket.on('leaderboard:update', (data: {
       leaderboard: { playerId: string; totalScore: number; scoreBreakdown?: ScoreBreakdown }[];
-      lastScoredHeadline?: { playerId: string; updatedPriorityPlanet?: string | null };
+      lastScoredHeadline?: {
+        headlineId?: string;
+        playerId: string;
+        breakdown?: { baseline: number; plausibility: number; connectionScore: number; planetBonus: number; total: number };
+        updatedPriorityPlanet?: string | null;
+      };
     }) => {
       console.log('Leaderboard updated:', data);
       setSessionState((prev) => {
@@ -222,6 +233,25 @@ export function useSocket(): UseSocketReturn {
         });
         return { ...prev, players: updatedPlayers };
       });
+
+      // Patch headline with its score breakdown
+      if (data.lastScoredHeadline?.headlineId && data.lastScoredHeadline.breakdown) {
+        const { headlineId, breakdown } = data.lastScoredHeadline;
+        setHeadlines((prev) =>
+          prev.map((h) =>
+            h.id === headlineId
+              ? {
+                  ...h,
+                  baselineScore: breakdown.baseline,
+                  plausibilityScore: breakdown.plausibility,
+                  connectionScore: breakdown.connectionScore,
+                  planetBonusScore: breakdown.planetBonus,
+                  totalScore: breakdown.total,
+                }
+              : h
+          )
+        );
+      }
     });
 
     return () => {
