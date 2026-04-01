@@ -54,6 +54,18 @@ describe('computeNextPhase', () => {
     });
   });
 
+  describe('TUTORIAL phase transitions', () => {
+    it('should transition from TUTORIAL to PLAYING round 1', () => {
+      const result = computeNextPhase('TUTORIAL', 0, 3);
+      expect(result).toEqual({ phase: 'PLAYING', round: 1 });
+    });
+
+    it('should transition from TUTORIAL to PLAYING round 1 regardless of max rounds', () => {
+      expect(computeNextPhase('TUTORIAL', 0, 1)).toEqual({ phase: 'PLAYING', round: 1 });
+      expect(computeNextPhase('TUTORIAL', 0, 10)).toEqual({ phase: 'PLAYING', round: 1 });
+    });
+  });
+
   describe('Edge cases', () => {
     it('should transition WAITING to FINISHED (unexpected but safe)', () => {
       const result = computeNextPhase('WAITING', 0, 4);

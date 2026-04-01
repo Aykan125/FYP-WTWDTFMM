@@ -182,11 +182,11 @@ describe('GameLoopManager', () => {
       expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
       expect(mockClient.query).toHaveBeenCalledWith(
         expect.stringContaining('UPDATE game_sessions'),
-        expect.arrayContaining(['PLAYING', 1, 'session-123'])
+        expect.arrayContaining(['TUTORIAL', 0, 'session-123'])
       );
       expect(mockClient.query).toHaveBeenCalledWith(
         expect.stringContaining('INSERT INTO game_session_state_transitions'),
-        expect.arrayContaining(['session-123', 'WAITING', 'PLAYING', 1])
+        expect.arrayContaining(['session-123', 'WAITING', 'TUTORIAL', 0])
       );
       expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
 
