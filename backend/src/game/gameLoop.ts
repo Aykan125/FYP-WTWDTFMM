@@ -9,9 +9,11 @@ import { migratePlanetState } from './planetWeighting.js';
 import { DEFAULT_PLANETS } from './scoringTypes.js';
 import { generateRoundSummary } from './summaryService.js';
 import { getPlayerScoreBreakdowns } from './scoringService.js';
+import { SEED_HEADLINES } from './seedHeadlines.js';
 
 const ROUND_SPEED_WEIGHTS = [3, 5, 7];
 const TOTAL_INGAME_MS = 20 * 365.25 * 24 * 60 * 60 * 1000;
+const TUTORIAL_DURATION_MS = 3 * 60 * 1000; // 3 minutes
 
 /** Exported for testing */
 export function computeRoundSpeedRatio(roundNo: number, playMinutes: number): number {
@@ -32,6 +34,10 @@ export function computeNextPhase(
   currentRound: number,
   maxRounds: number
 ): { phase: GamePhase; round: number } {
+  if (currentPhase === 'TUTORIAL') {
+    return { phase: 'PLAYING', round: 1 };
+  }
+
   if (currentPhase === 'PLAYING') {
     // After playing the last round, go directly to finished (no final break)
     if (currentRound >= maxRounds) {
@@ -57,6 +63,8 @@ export function computeNextPhase(
  */
 class GameLoopInstance {
   private timerHandle: NodeJS.Timeout | null = null;
+  private seedDripHandle: NodeJS.Timeout | null = null;
+  private archivePlayerId: string | null = null;
   private state: GameSessionRuntimeState;
   private io: Server;
 
@@ -106,14 +114,18 @@ class GameLoopInstance {
     }
   }
 
-  async startGame(): Promise<void> {
+  async startGame(archivePlayerId?: string): Promise<void> {
     if (this.state.phase !== 'WAITING') {
       throw new Error(
         `Cannot start game from phase ${this.state.phase}, must be WAITING`
       );
     }
 
-    await this.transitionToPhase('PLAYING', 1);
+    if (archivePlayerId) {
+      this.archivePlayerId = archivePlayerId;
+    }
+
+    await this.transitionToPhase('TUTORIAL', 0);
   }
 
   async transitionToPhase(
@@ -146,7 +158,10 @@ class GameLoopInstance {
       inGameStartAt = new Date(inGameStartAt.getTime() + inGameElapsed);
     }
 
-    if (toPhase === 'PLAYING') {
+    if (toPhase === 'TUTORIAL') {
+      this.state.timelineSpeedRatio = 0;
+      phaseEndsAt = new Date(now.getTime() + TUTORIAL_DURATION_MS);
+    } else if (toPhase === 'PLAYING') {
       if (!inGameStartAt) {
         inGameStartAt = now;
       }
@@ -172,6 +187,17 @@ class GameLoopInstance {
 
     // Broadcast state change to all players
     await this.broadcastGameState();
+
+    // Start seed drip-feed when entering TUTORIAL
+    if (toPhase === 'TUTORIAL' && this.archivePlayerId) {
+      this.startSeedDrip();
+    }
+
+    // Stop seed drip when leaving TUTORIAL
+    if (fromPhase === 'TUTORIAL' && this.seedDripHandle) {
+      clearInterval(this.seedDripHandle);
+      this.seedDripHandle = null;
+    }
 
     // Generate round summary when transitioning to BREAK
     if (toPhase === 'BREAK') {
@@ -418,10 +444,75 @@ class GameLoopInstance {
     }
   }
 
+  private startSeedDrip(): void {
+    const seeds = [...SEED_HEADLINES];
+    const intervalMs = Math.floor(TUTORIAL_DURATION_MS / (seeds.length + 1));
+    let index = 0;
+
+    console.log(
+      `[GameLoop ${this.state.joinCode}] Starting seed drip: ${seeds.length} headlines over ${TUTORIAL_DURATION_MS / 1000}s (every ${Math.round(intervalMs / 1000)}s)`
+    );
+
+    this.seedDripHandle = setInterval(async () => {
+      if (index >= seeds.length) {
+        if (this.seedDripHandle) {
+          clearInterval(this.seedDripHandle);
+          this.seedDripHandle = null;
+        }
+        return;
+      }
+
+      const seed = seeds[index];
+      const inGameSubmittedAt = new Date(seed.inGameYear, seed.inGameMonth - 1, 1).toISOString();
+
+      try {
+        const result = await pool.query(
+          `INSERT INTO game_session_headlines
+            (session_id, player_id, round_no, headline_text, plausibility_level, llm_status, in_game_submitted_at)
+           VALUES ($1, $2, 1, $3, 3, 'seed', $4)
+           RETURNING id, created_at`,
+          [this.state.sessionId, this.archivePlayerId, seed.text, inGameSubmittedAt]
+        );
+
+        const row = result.rows[0];
+        const roomName = `session:${this.state.joinCode}`;
+
+        this.io.to(roomName).emit('headline:new', {
+          id: row.id,
+          sessionId: this.state.sessionId,
+          playerId: this.archivePlayerId,
+          playerNickname: 'Archive',
+          roundNo: 1,
+          storyDirection: seed.text,
+          text: seed.text,
+          diceRoll: null,
+          selectedBand: null,
+          plausibilityBand: 3,
+          plausibilityLabel: 'plausible',
+          planets: [],
+          allBands: null,
+          createdAt: new Date(row.created_at).toISOString(),
+          inGameSubmittedAt,
+        });
+      } catch (error) {
+        console.error(
+          `[GameLoop ${this.state.joinCode}] Failed to insert seed headline ${index}:`,
+          error
+        );
+      }
+
+      index++;
+    }, intervalMs);
+  }
+
   stop(): void {
     if (this.timerHandle) {
       clearTimeout(this.timerHandle);
       this.timerHandle = null;
+    }
+    if (this.seedDripHandle) {
+      clearInterval(this.seedDripHandle);
+      this.seedDripHandle = null;
     }
     console.log(`[GameLoop ${this.state.joinCode}] Stopped`);
   }
@@ -481,9 +572,9 @@ class GameLoopManager {
     return loop;
   }
 
-  async handleHostStartGame(sessionId: string, joinCode: string): Promise<void> {
+  async handleHostStartGame(sessionId: string, joinCode: string, archivePlayerId?: string): Promise<void> {
     const loop = await this.ensureLoopForSession(sessionId, joinCode);
-    await loop.startGame();
+    await loop.startGame(archivePlayerId);
   }
 
   stopLoop(sessionId: string): void {
