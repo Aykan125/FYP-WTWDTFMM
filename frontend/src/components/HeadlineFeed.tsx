@@ -59,11 +59,28 @@ export function HeadlineFeed({ headlines, currentPlayerId }: HeadlineFeedProps) 
           const isArchive = headline.playerNickname === 'Archive';
 
           const hasScore = headline.totalScore != null;
+          const primaryPlanet = headline.planets?.[0];
+
+          const PLANET_BORDER: Record<string, string> = {
+            EARTH: 'border-l-green-300',
+            MARS: 'border-l-red-300',
+            MERCURY: 'border-l-cyan-300',
+            VENUS: 'border-l-pink-300',
+            JUPITER: 'border-l-orange-300',
+            SATURN: 'border-l-yellow-300',
+            NEPTUNE: 'border-l-blue-300',
+            URANUS: 'border-l-teal-300',
+            PLUTO: 'border-l-purple-300',
+          };
+
+          const planetBorder = !isArchive && primaryPlanet
+            ? `border-l-2 ${PLANET_BORDER[primaryPlanet] ?? ''}`
+            : '';
 
           return (
             <div
               key={headline.id}
-              className={`group relative px-3 py-2.5 rounded-lg border ${
+              className={`group relative px-3 py-2.5 rounded-lg border ${planetBorder} ${
                 isArchive
                   ? 'bg-amber-50/40 border-amber-100'
                   : isOwn
