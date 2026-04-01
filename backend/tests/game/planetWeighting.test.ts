@@ -254,7 +254,7 @@ describe('Planet Tally Functions', () => {
   });
 
   describe('updatePlanetTally weighted', () => {
-    it('should apply weight 2 for NEPTUNE and PLUTO', () => {
+    it('should apply weight 3 for NEPTUNE and PLUTO', () => {
       const state: PlanetTallyState = {
         tally: { MARS: 0, NEPTUNE: 0, PLUTO: 0 },
         previousPriority: null,
@@ -263,12 +263,12 @@ describe('Planet Tally Functions', () => {
 
       const newState = updatePlanetTally(state, ['MARS', 'NEPTUNE', 'PLUTO']);
 
-      expect(newState.tally['MARS']).toBe(1);     // weight 1
-      expect(newState.tally['NEPTUNE']).toBe(2);   // weight 2
-      expect(newState.tally['PLUTO']).toBe(2);     // weight 2
+      expect(newState.tally['MARS']).toBe(2);      // weight 2
+      expect(newState.tally['NEPTUNE']).toBe(3);    // weight 3
+      expect(newState.tally['PLUTO']).toBe(3);      // weight 3
     });
 
-    it('should apply weight 1 for concrete planets', () => {
+    it('should apply weight 2 for concrete planets', () => {
       const state: PlanetTallyState = {
         tally: { MERCURY: 0, JUPITER: 0, EARTH: 0 },
         previousPriority: null,
@@ -277,9 +277,9 @@ describe('Planet Tally Functions', () => {
 
       const newState = updatePlanetTally(state, ['MERCURY', 'JUPITER', 'EARTH']);
 
-      expect(newState.tally['MERCURY']).toBe(1);
-      expect(newState.tally['JUPITER']).toBe(1);
-      expect(newState.tally['EARTH']).toBe(1);
+      expect(newState.tally['MERCURY']).toBe(2);
+      expect(newState.tally['JUPITER']).toBe(2);
+      expect(newState.tally['EARTH']).toBe(2);
     });
 
     it('should accumulate weighted tallies over multiple updates', () => {
@@ -292,8 +292,8 @@ describe('Planet Tally Functions', () => {
       state = updatePlanetTally(state, ['MARS', 'PLUTO']);
       state = updatePlanetTally(state, ['MARS', 'PLUTO']);
 
-      expect(state.tally['MARS']).toBe(2);   // 2 × weight 1
-      expect(state.tally['PLUTO']).toBe(4);  // 2 × weight 2
+      expect(state.tally['MARS']).toBe(4);   // 2 × weight 2
+      expect(state.tally['PLUTO']).toBe(6);  // 2 × weight 3
     });
 
     it('should default to weight 1 for unknown planets', () => {

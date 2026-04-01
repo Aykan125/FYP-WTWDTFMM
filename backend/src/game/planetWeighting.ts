@@ -24,9 +24,9 @@ import {
  * as priority less often.
  */
 export const PLANET_TALLY_WEIGHTS: Record<string, number> = {
-  MERCURY: 1, VENUS: 1, EARTH: 1, MARS: 1,
-  JUPITER: 1, SATURN: 1, URANUS: 1,
-  NEPTUNE: 2, PLUTO: 2,
+  MERCURY: 2, VENUS: 2, EARTH: 2, MARS: 2,
+  JUPITER: 2, SATURN: 2, URANUS: 2,
+  NEPTUNE: 3, PLUTO: 3,
 };
 
 // ============================================================================
