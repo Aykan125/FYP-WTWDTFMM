@@ -26,6 +26,8 @@ export function GameStatus({
         return { text: 'Waiting', variant: 'default' as const };
       case 'PLAYING':
         return { text: 'Playing', variant: 'green' as const };
+      case 'TUTORIAL':
+        return { text: 'Tutorial', variant: 'yellow' as const };
       case 'BREAK':
         return { text: 'Break', variant: 'blue' as const };
       case 'FINISHED':

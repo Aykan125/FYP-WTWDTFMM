@@ -2,7 +2,7 @@
  * Game phase types and interfaces for the Future Headlines game
  */
 
-export type GamePhase = 'WAITING' | 'PLAYING' | 'BREAK' | 'FINISHED';
+export type GamePhase = 'WAITING' | 'TUTORIAL' | 'PLAYING' | 'BREAK' | 'FINISHED';
 
 /**
  * Configuration for a game session (from DB)
