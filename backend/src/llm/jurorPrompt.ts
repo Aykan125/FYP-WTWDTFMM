@@ -251,11 +251,11 @@ ${storyDirection}
 Task 1 — Plausibility classification
 Classify the provided story_direction into exactly one plausibility band: P1, P2, P3, P4, or P5.
 Use a strict, objective epistemic scale:
-- P1 inevitable: overwhelmingly expected by that date; would be more surprising not to happen
-- P2 probable: more likely than not by that date
-- P3 plausible: credible and well within the range of realistic outcomes by that date
-- P4 possible: not the baseline expectation, but still a serious possibility
-- P5 preposterous: would require extremely surprising breakthroughs, cascades, or consequences by that date
+- P1 inevitable: only use P1 if this exact scenario is already documented in mainstream news today — it is not a prediction but a report of something that has already occurred. Near-future extrapolations of current trends should be P2, not P1.
+- P2 probable: more likely than not by that date; an incremental, expected next step
+- P3 plausible: credible and well within the range of realistic outcomes by that date — the creative sweet spot
+- P4 possible: not the baseline expectation, but still a serious possibility given the timeline
+- P5 preposterous: would require multiple implausible leaps, extreme breakthroughs, or wildly unlikely cascades. Creative but grounded extrapolations from the existing timeline should not receive P5 unless they require several implausible steps.
 
 When choosing the plausibility level, explicitly take into account:
 - the date in the story direction
