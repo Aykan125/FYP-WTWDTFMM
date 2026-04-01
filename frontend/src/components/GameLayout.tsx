@@ -153,6 +153,11 @@ export function GameLayout({
                   currentPlayerId={currentPlayerId}
                 />
               </div>
+              {phase === 'TUTORIAL' && (
+                <div className="shrink-0 pt-3 text-center text-sm text-gray-400">
+                  Watch the timeline build up — submissions open soon...
+                </div>
+              )}
               {phase === 'PLAYING' && (
                 <div className="shrink-0 pt-3 pb-[env(safe-area-inset-bottom)]">
                   <HeadlineInput onSubmit={onSubmitHeadline} phase={phase} />
@@ -190,6 +195,11 @@ export function GameLayout({
                 <RoundSummary summary={roundSummary} roundNo={currentRound} />
               )}
             </div>
+            {phase === 'TUTORIAL' && (
+              <div className="text-center py-3 text-sm text-gray-400">
+                Watch the timeline build up — submissions open soon...
+              </div>
+            )}
             {phase === 'PLAYING' && (
               <div className="shrink-0 px-4 pb-[env(safe-area-inset-bottom)] pb-3 pt-2 border-t border-gray-100 bg-white/80 backdrop-blur">
                 <HeadlineInput

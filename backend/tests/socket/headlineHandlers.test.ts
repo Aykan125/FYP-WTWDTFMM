@@ -185,7 +185,7 @@ describe('Headline Handlers', () => {
           diceRoll: 50,
           selectedBand: 3,
         }),
-        cooldownMs: 60000,
+        cooldownMs: 90000,
       });
 
       // Verify broadcast was called

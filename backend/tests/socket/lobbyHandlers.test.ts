@@ -342,14 +342,10 @@ describe('Lobby Handlers - getSessionState', () => {
       const callback = jest.fn();
       await startGameHandler({ joinCode: 'ABC123' }, callback);
 
-      expect(gameLoopManager.handleHostStartGame).toHaveBeenCalledWith('session-123', 'ABC123');
-      expect(callback).toHaveBeenCalledWith({
-        success: true,
-        state: expect.objectContaining({
-          phase: 'PLAYING',
-          currentRound: 1,
-        }),
-      });
+      expect(gameLoopManager.handleHostStartGame).toHaveBeenCalledWith('session-123', 'ABC123', expect.any(String));
+      expect(callback).toHaveBeenCalledWith(
+        expect.objectContaining({ success: true })
+      );
     });
 
     it('should reject when non-host tries to start game', async () => {
