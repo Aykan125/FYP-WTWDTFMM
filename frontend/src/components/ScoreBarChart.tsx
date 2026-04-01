@@ -18,9 +18,9 @@ interface ScoreBarChartProps {
 
 const SEGMENTS = [
   { key: 'baseline' as const, label: 'Baseline', color: 'bg-gray-400' },
-  { key: 'plausibility' as const, label: 'Plausibility', color: 'bg-indigo-400' },
-  { key: 'connection' as const, label: 'Connection', color: 'bg-emerald-400' },
-  { key: 'planetBonus' as const, label: 'Planet', color: 'bg-violet-400' },
+  { key: 'plausibility' as const, label: 'Plausibility', color: 'bg-indigo-500' },
+  { key: 'connection' as const, label: 'Connection', color: 'bg-emerald-500' },
+  { key: 'planetBonus' as const, label: 'Planet', color: 'bg-amber-400' },
 ];
 
 export function ScoreBarChart({
