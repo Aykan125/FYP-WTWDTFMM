@@ -7,6 +7,7 @@ import { HeadlineInput } from './HeadlineInput';
 import { PriorityPlanet } from './PriorityPlanet';
 import { InGameDate } from './InGameDate';
 import { RoundSummary } from './RoundSummary';
+import { ScoreCard } from './ScoreCard';
 import { PlayerList } from './PlayerList';
 import { Badge } from './ui';
 import { Headline, RoundSummary as RoundSummaryType } from '../hooks/useSocket';
@@ -142,6 +143,7 @@ export function GameLayout({
               <div className="shrink-0 pt-3 pb-[env(safe-area-inset-bottom)] space-y-2">
                 <PriorityPlanet planet={priorityPlanet} />
                 <InGameDate inGameNow={derivedInGameNow} />
+                <ScoreCard phase={phase} />
               </div>
             </aside>
 
