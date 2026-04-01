@@ -10,12 +10,12 @@ import { applyHeadlineEvaluation, getPlayerScoreBreakdowns } from '../game/scori
 import { PlausibilityLevel, DEFAULT_PLANETS } from '../game/scoringTypes.js';
 import { migratePlanetState, initialPlanetTallyState, selectPriorityPlanet } from '../game/planetWeighting.js';
 import { getRoundSummary, getSessionIdFromJoinCode } from '../game/summaryService.js';
-import { SEED_HEADLINES } from '../game/seedHeadlines.js';
+
 
 // Rate limiting: track last submission time per player
 // Key: `${sessionId}:${playerId}`, Value: timestamp in ms
 const lastHeadlineSubmission: Map<string, number> = new Map();
-const HEADLINE_COOLDOWN_MS = 60_000; // 1 minute
+const HEADLINE_COOLDOWN_MS = 90_000; // 1.5 minutes
 
 /**
  * Count unique other authors from STRONG linked headlines using DB lookup.
@@ -437,22 +437,8 @@ export function setupLobbyHandlers(io: Server): void {
         );
         const archivePlayerId = archiveResult.rows[0].id;
 
-        // Insert seed headlines
-        const gameStartTime = new Date();
-        for (let i = 0; i < SEED_HEADLINES.length; i++) {
-          const seed = SEED_HEADLINES[i];
-          const createdAt = new Date(gameStartTime.getTime() - (SEED_HEADLINES.length - i) * 1000);
-          const inGameSubmittedAt = new Date(seed.inGameYear, seed.inGameMonth - 1, 1).toISOString();
-          await pool.query(
-            `INSERT INTO game_session_headlines
-              (session_id, player_id, round_no, headline_text, plausibility_level, llm_status, created_at, in_game_submitted_at)
-             VALUES ($1, $2, 1, $3, 3, 'seed', $4, $5)`,
-            [sessionState.id, archivePlayerId, seed.text, createdAt, inGameSubmittedAt]
-          );
-        }
-
-        // Start the game via GameLoopManager
-        await gameLoopManager.handleHostStartGame(sessionState.id, joinCode);
+        // Start the game via GameLoopManager (seeds will drip-feed during TUTORIAL phase)
+        await gameLoopManager.handleHostStartGame(sessionState.id, joinCode, archivePlayerId);
 
         // Get updated state
         const updatedState = await getSessionState(joinCode);
@@ -805,6 +791,11 @@ export function setupLobbyHandlers(io: Server): void {
             h.band3_headline,
             h.band4_headline,
             h.band5_headline,
+            h.baseline_score,
+            h.plausibility_score,
+            h.others_story_score,
+            h.planet_bonus_score,
+            h.total_headline_score,
             h.created_at,
             h.in_game_submitted_at
           FROM game_session_headlines h
@@ -841,6 +832,11 @@ export function setupLobbyHandlers(io: Server): void {
             band4: row.band4_headline,
             band5: row.band5_headline,
           } : null,
+          baselineScore: row.baseline_score ?? null,
+          plausibilityScore: row.plausibility_score ?? null,
+          connectionScore: row.others_story_score ?? null,
+          planetBonusScore: row.planet_bonus_score ?? null,
+          totalScore: row.total_headline_score ?? null,
           createdAt: new Date(row.created_at).toISOString(),
           inGameSubmittedAt: row.in_game_submitted_at
             ? new Date(row.in_game_submitted_at).toISOString()
