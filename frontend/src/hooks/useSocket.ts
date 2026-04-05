@@ -65,7 +65,7 @@ export interface RoundSummaryOutput {
   narrative: string;
   themes: string[];
   highlightedHeadlines: HighlightedHeadline[];
-  dominantPlanets: string[];
+  dominantPlanets?: string[];
   roundStats: {
     headlineCount: number;
     playerCount: number;
