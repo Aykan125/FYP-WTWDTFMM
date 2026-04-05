@@ -46,7 +46,7 @@ export function RoundSummary({ summary, roundNo }: RoundSummaryProps) {
     );
   }
 
-  const { narrative, themes, highlightedHeadlines, dominantPlanets, roundStats } = summary.summary;
+  const { narrative, themes, highlightedHeadlines, roundStats } = summary.summary;
 
   return (
     <Card padding="sm" className="h-full">
@@ -86,14 +86,7 @@ export function RoundSummary({ summary, roundNo }: RoundSummaryProps) {
           </div>
         )}
 
-        {/* Dominant Planets */}
-        {dominantPlanets.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {dominantPlanets.map((p, i) => (
-              <Badge key={i} variant="purple">{p}</Badge>
-            ))}
-          </div>
-        )}
+
       </div>
     </Card>
   );

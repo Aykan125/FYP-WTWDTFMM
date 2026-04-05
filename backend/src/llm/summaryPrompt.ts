@@ -56,13 +56,6 @@ export const summaryJsonSchema: JsonSchemaDefinition = {
         maxItems: 2,
         description: 'Top 2 most significant headlines from this period',
       },
-      dominantPlanets: {
-        type: 'array',
-        items: { type: 'string' },
-        minItems: 1,
-        maxItems: 3,
-        description: 'Top 3 planetary themes/influences this period',
-      },
       roundStats: {
         type: 'object',
         properties: {
@@ -79,7 +72,7 @@ export const summaryJsonSchema: JsonSchemaDefinition = {
         additionalProperties: false,
       },
     },
-    required: ['narrative', 'themes', 'highlightedHeadlines', 'dominantPlanets', 'roundStats'],
+    required: ['narrative', 'themes', 'highlightedHeadlines', 'roundStats'],
     additionalProperties: false,
   },
 };
@@ -92,13 +85,8 @@ export const summaryJsonSchema: JsonSchemaDefinition = {
  * Format a single headline for the prompt.
  */
 function formatHeadline(headline: RoundHeadlineInput, index: number): string {
-  const planetStr = headline.planets.length > 0
-    ? headline.planets.join(', ')
-    : 'none';
-
   return `${index + 1}. "${headline.headline}" by ${headline.player}
    - Plausibility: ${headline.plausibilityLabel} (${headline.plausibilityLevel}/5)
-   - Planets: ${planetStr}
    - Story direction: ${headline.storyDirection}`;
 }
 
@@ -116,14 +104,6 @@ export function buildSummaryPrompt(input: SummaryPromptInput): string {
   // Count unique players
   const uniquePlayers = new Set(headlines.map(h => h.player));
   const playerCount = uniquePlayers.size;
-
-  // Count planet occurrences
-  const planetCounts: Record<string, number> = {};
-  for (const h of headlines) {
-    for (const planet of h.planets) {
-      planetCounts[planet] = (planetCounts[planet] || 0) + 1;
-    }
-  }
 
   return `You are a future historian summarizing events from a timeline where AI has transformed society. Round ${roundNo} of ${totalRounds} has just ended.
 
@@ -143,9 +123,9 @@ Create a narrative summary as if these headlines represent REAL EVENTS that have
 
 3. **Highlighted Headlines**: Pick the top 2 most significant headlines. For each, explain their historical significance or impact on society - NOT why they were creative game submissions.
 
-4. **Dominant Planets**: List the top 3 planetary themes/influences that appeared across events.
+4. **Round Stats**: Include the headline count and contributor count (but frame it as "reports" or "developments" rather than game submissions).
 
-5. **Round Stats**: Include the headline count and contributor count (but frame it as "reports" or "developments" rather than game submissions).
+Do NOT mention planets, planetary themes, or any game mechanics. Write purely as a historian.
 
 Write in a journalistic or documentary style. The tone should be informative and immersive, making it feel like a real historical recap of future events.`;
 }
