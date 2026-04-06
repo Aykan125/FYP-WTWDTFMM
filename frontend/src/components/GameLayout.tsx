@@ -8,6 +8,7 @@ import { PriorityPlanet } from './PriorityPlanet';
 import { InGameDate } from './InGameDate';
 import { RoundSummary } from './RoundSummary';
 import { ScoreCard } from './ScoreCard';
+import { GameEnd } from './GameEnd';
 import { PlayerList } from './PlayerList';
 import { Badge } from './ui';
 import { Headline, RoundSummary as RoundSummaryType } from '../hooks/useSocket';
@@ -106,8 +107,8 @@ export function GameLayout({
         </div>
       </header>
 
-      {/* ─── WAITING / FINISHED: render lobby content ─── */}
-      {(isWaiting || isFinished) && (
+      {/* ─── WAITING: render lobby content ─── */}
+      {isWaiting && (
         <main className="flex-1 min-h-0 overflow-y-auto">
           <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
             {lobbyContent}
@@ -122,6 +123,21 @@ export function GameLayout({
             </div>
           </div>
         </main>
+      )}
+
+      {/* ─── FINISHED: render game end page ─── */}
+      {isFinished && (
+        <GameEnd
+          joinCode={joinCode}
+          players={players}
+          headlines={headlines}
+          currentPlayerId={currentPlayerId}
+          maxRounds={maxRounds}
+          totalGameMins={totalGameMins}
+          currentGameMins={currentGameMins}
+          roundSummary={roundSummary}
+          onBack={onBack}
+        />
       )}
 
       {/* ─── IN-GAME: 3-column grid ─── */}
