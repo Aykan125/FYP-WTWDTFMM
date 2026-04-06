@@ -26,32 +26,30 @@ The planet system is a game mechanic, not part of the fictional world. Summaries
 
 ---
 
-# Plausibility prompt calibration (P1/P5 definitions)
+# Revert plausibility prompt calibration
 
 ## What changed
 
 **File:** `backend/src/llm/jurorPrompt.ts`
 
-Based on a human-vs-AI rating experiment (38 headlines from playtest 1), the AI was too aggressive classifying headlines as P1 ("already happening") and P5 ("preposterous"). Human raters (Ayman and LDG) clustered in the middle (levels 2-4) while the AI spread evenly across all 5 levels, hitting the extremes 3x more often than humans.
+Reverted the P1/P5 wording changes from commits `5d2991a` and `505563b` back to the original definitions:
 
-Changes:
-- **P1 definition tightened**: "overwhelmingly expected by that date — so likely it would be surprising if it did NOT happen. Reserve P1 for things that are near-certain continuations of reality, not for creative predictions. A headline that simply restates a current trend without adding anything new belongs here."
-- **P5 definition softened**: "would require multiple implausible leaps, extreme breakthroughs, or wildly unlikely cascades. Creative but grounded extrapolations from the existing timeline should not receive P5 unless they require several implausible steps."
-
-P2, P3, P4 definitions left unchanged.
-
-Note: An earlier version of the P1 tweak (commit `5d2991a`) was too restrictive — it said "only use P1 if this exact scenario is already documented in mainstream news today." That was fixed in commit `505563b` to the current wording, which matches the user's intent (P1 = inevitable, not "already in the news").
+```
+- P1 inevitable: overwhelmingly expected by that date; would be more surprising not to happen
+- P2 probable: more likely than not by that date
+- P3 plausible: credible and well within the range of realistic outcomes by that date
+- P4 possible: not the baseline expectation, but still a serious possibility
+- P5 preposterous: would require extremely surprising breakthroughs, cascades, or consequences by that date
+```
 
 ## Trade-offs considered
 
-1. **Leave the prompt unchanged:** The experiment showed systematic bias toward extremes. Rejected.
-2. **Tweak only P1:** Would reduce the "already happening" over-classification but not the P5 over-classification. Rejected as partial.
-3. **Rewrite all 5 levels:** Overkill — P2/P3/P4 showed good human-AI agreement. Rejected.
-4. **Chosen: Tighten P1, soften P5:** Minimum change that addresses both systematic biases.
+1. **Keep the tweaked wording:** The tweak was based on single-rater disagreement (Ayman alone showed the AI called things P1 3x more often). Rejected.
+2. **Revert to original (chosen):** A second rater (LDG) produced similar disagreement patterns with the AI but the humans also disagreed with each other significantly. When looking at the shared human agreement (where both humans agreed), the AI's ratings were in the right range. The original prompt was already well-calibrated.
 
 ## Justified rationale
 
-The prompt is the only place we can shift the AI's rating distribution without retraining. The new wording keeps the scale intact but makes the extremes harder to reach, pushing the AI's distribution closer to human consensus. This matters because plausibility scoring currently awards level 3 = 2 pts, levels 2/4 = 1 pt, levels 1/5 = 0 pts, so over-classification at the extremes directly reduces players' scores for reasonable headlines.
+Inter-rater variance between the two human raters was substantial — Ayman-vs-LDG weighted kappa was only 0.087 (poor) while Ayman-vs-AI and LDG-vs-AI were both ~0.28 (fair). This means the AI was actually closer to a human consensus than either individual rater. The original prompt was doing fine; my earlier tweak over-corrected based on noisy single-rater data.
 
 ---
 
