@@ -1,3 +1,239 @@
+# Remove planets from round summary generation
+
+## What changed
+
+**Files:** `backend/src/llm/summaryPrompt.ts`, `frontend/src/components/RoundSummary.tsx`, `frontend/src/hooks/useSocket.ts`
+
+Summaries generated during BREAK and at game end previously mentioned "planetary themes" because the summary prompt was fed planet data per headline and asked the AI to list dominant planets. This broke immersion — summaries are supposed to read as pure historical recaps.
+
+Changes:
+- Removed `- Planets: ${planetStr}` from the headline format in the prompt
+- Removed `dominantPlanets` from the summary JSON schema
+- Removed task 4 ("Dominant Planets") from the prompt instructions
+- Added explicit "Do NOT mention planets, planetary themes, or any game mechanics" directive
+- Removed the unused `planetCounts` calculation and `planetStr` variable
+- Removed the purple planet badges section from `RoundSummary.tsx`
+- Made `dominantPlanets` optional on `RoundSummaryOutput` type for backwards compat with old DB rows
+
+## Trade-offs considered
+
+1. **Keep planets in prompt but instruct AI not to mention them:** Weak signal — the AI often leaked planet references anyway. Rejected.
+2. **Remove planets from prompt entirely (chosen):** Cleaner — if the data isn't in the prompt, the AI can't mention it.
+
+## Justified rationale
+
+The planet system is a game mechanic, not part of the fictional world. Summaries should read as genuine historical recaps without reference to game internals.
+
+---
+
+# Plausibility prompt calibration (P1/P5 definitions)
+
+## What changed
+
+**File:** `backend/src/llm/jurorPrompt.ts`
+
+Based on a human-vs-AI rating experiment (38 headlines from playtest 1), the AI was too aggressive classifying headlines as P1 ("already happening") and P5 ("preposterous"). Human raters (Ayman and LDG) clustered in the middle (levels 2-4) while the AI spread evenly across all 5 levels, hitting the extremes 3x more often than humans.
+
+Changes:
+- **P1 definition tightened**: "overwhelmingly expected by that date — so likely it would be surprising if it did NOT happen. Reserve P1 for things that are near-certain continuations of reality, not for creative predictions. A headline that simply restates a current trend without adding anything new belongs here."
+- **P5 definition softened**: "would require multiple implausible leaps, extreme breakthroughs, or wildly unlikely cascades. Creative but grounded extrapolations from the existing timeline should not receive P5 unless they require several implausible steps."
+
+P2, P3, P4 definitions left unchanged.
+
+Note: An earlier version of the P1 tweak (commit `5d2991a`) was too restrictive — it said "only use P1 if this exact scenario is already documented in mainstream news today." That was fixed in commit `505563b` to the current wording, which matches the user's intent (P1 = inevitable, not "already in the news").
+
+## Trade-offs considered
+
+1. **Leave the prompt unchanged:** The experiment showed systematic bias toward extremes. Rejected.
+2. **Tweak only P1:** Would reduce the "already happening" over-classification but not the P5 over-classification. Rejected as partial.
+3. **Rewrite all 5 levels:** Overkill — P2/P3/P4 showed good human-AI agreement. Rejected.
+4. **Chosen: Tighten P1, soften P5:** Minimum change that addresses both systematic biases.
+
+## Justified rationale
+
+The prompt is the only place we can shift the AI's rating distribution without retraining. The new wording keeps the scale intact but makes the extremes harder to reach, pushing the AI's distribution closer to human consensus. This matters because plausibility scoring currently awards level 3 = 2 pts, levels 2/4 = 1 pt, levels 1/5 = 0 pts, so over-classification at the extremes directly reduces players' scores for reasonable headlines.
+
+---
+
+# Planet color coding in headline feed
+
+## What changed
+
+**File:** `frontend/src/components/HeadlineFeed.tsx`
+
+Added a subtle left-border colour to each non-archive headline card based on its primary planet (the first entry in `planets[]`). Uses Tailwind `-300` weight tones (`border-l-2 border-l-{color}-300`).
+
+Planet → colour mapping:
+```
+EARTH → green, MARS → red, MERCURY → cyan, VENUS → pink, JUPITER → orange,
+SATURN → yellow, NEPTUNE → blue, URANUS → teal, PLUTO → purple
+```
+
+Archive headlines are excluded (they don't have planet data). The border is intentionally subtle so readability isn't sacrificed.
+
+## Trade-offs considered
+
+1. **Bold background colour per planet:** Too distracting, hurts readability.
+2. **Icon next to player name:** Adds clutter.
+3. **Chosen: Subtle left border:** Visible but unobtrusive.
+
+## Justified rationale
+
+Players had no way to see what planet the AI had classified their headlines under. The left border gives a glanceable signal without requiring explicit labels.
+
+---
+
+# Score bar chart colour tweaking
+
+## What changed
+
+**File:** `frontend/src/components/ScoreBarChart.tsx`
+
+The four segments (baseline, plausibility, connection, planet bonus) were all `-400` weight, making them visually similar:
+- Plausibility: `indigo-400` → `indigo-500` (darker)
+- Connection: `emerald-400` → `emerald-500` (darker)
+- Planet: `violet-400` → `amber-400` (different hue entirely)
+- Baseline: unchanged (`gray-400`)
+
+## Trade-offs considered
+
+1. **Radically different palette:** Would lose the existing theme feel. Rejected.
+2. **Minor darkening + one hue change (chosen):** Enough to distinguish segments without breaking the visual identity.
+
+## Justified rationale
+
+Players reported difficulty telling the score segments apart. Distinct colours improve the leaderboard's readability at a glance.
+
+---
+
+# Score explanation card
+
+## What changed
+
+**Files:** `frontend/src/components/ScoreCard.tsx` (new), `frontend/src/components/GameLayout.tsx`
+
+Added a new `ScoreCard` component to the left sidebar during PLAYING and BREAK phases. It shows the scoring rules at a glance:
+```
+Baseline           +1
+Plausibility +2 sweet spot / +1 near
+Connection   +1 / +4 / +9 for 1/2/3 unique authors
+Planet bonus +2
+```
+
+## Trade-offs considered
+
+1. **Add to a help modal or tooltip:** Hides the info behind a click. Rejected.
+2. **Show inline in the left sidebar (chosen):** Always visible while playing. Uses the existing card styling.
+
+## Justified rationale
+
+The scoring changes from playtest 1 (baseline 5→1, connection 1/4/9, planet 3→2) make it harder for players to know what they're optimising for. A persistent reference card helps players strategise without breaking immersion.
+
+---
+
+# Per-headline score breakdown on hover
+
+## What changed
+
+**Files:** `backend/src/socket/lobbyHandlers.ts`, `frontend/src/hooks/useSocket.ts`, `frontend/src/components/HeadlineFeed.tsx`
+
+Headlines in the feed now show a score breakdown tooltip on hover: `+1 baseline / +2 plaus / +4 conn / +2 planet = 9 pts`.
+
+Implementation:
+- The `headline:get_feed` query now returns score columns (`baseline_score`, `plausibility_score`, `others_story_score`, `planet_bonus_score`, `total_headline_score`) for each row
+- The `Headline` interface on the frontend was extended with optional score fields
+- The `leaderboard:update` listener now patches the matching headline in state with its score breakdown when a new headline is scored
+- `HeadlineFeed.tsx` uses Tailwind `group` / `group-hover:flex` to show the tooltip only on hover
+
+## Trade-offs considered
+
+1. **Show breakdown always:** Clutters the feed. Rejected.
+2. **Click to reveal:** Requires discovery. Rejected.
+3. **Hover (chosen):** Invisible until needed, instant on hover.
+
+## Justified rationale
+
+Per-headline scores were tracked on the backend but never exposed to players. The hover tooltip lets players understand why specific headlines scored high or low without adding permanent visual noise.
+
+---
+
+# Adjust planet tally weights to Option B (2/3 ratio)
+
+## What changed
+
+**Files:** `backend/src/game/planetWeighting.ts`, `backend/tests/game/planetWeighting.test.ts`
+
+Follow-up to the earlier weighted planet tallies change. The initial version used weights +1 (all planets) and +2 (NEPTUNE, PLUTO). Monte Carlo simulation showed this produced a 6.3x max/min ratio in priority selection, dropping PLUTO to 2.9% and effectively eliminating it.
+
+Changed to:
+```
+All planets: weight 2
+NEPTUNE, PLUTO: weight 3
+```
+
+The 2/3 ratio (1.5x effective difference) produces a more balanced distribution (simulated):
+- EARTH/VENUS: ~17.7% (most likely as priority)
+- NEPTUNE: 10.8% (still appears meaningfully)
+- PLUTO: 4.4% (rare but not eliminated)
+- Max/min ratio: 4.9x (best of all tested options)
+
+## Trade-offs considered
+
+1. **Keep +1/+2 (original):** Too aggressive — kills PLUTO completely.
+2. **Use +1/+2/+3 (three-tier):** Even more extreme, drops PLUTO below 3%.
+3. **Use +2/+3 (chosen):** Gentlest weighting that still suppresses abstract planets.
+
+## Justified rationale
+
+The goal was to make abstract planets (NEPTUNE/PLUTO) less likely to appear as priority, not eliminate them entirely. The 2/3 ratio keeps the natural variance of per-player tallies while gently biasing away from the hard-to-target planets.
+
+---
+
+# Tutorial phase + 90s cooldown + seed drip-feed
+
+## What changed
+
+**Files:** `backend/db/migrations/011_tutorial_phase.sql` (new), `backend/src/game/types.ts`, `backend/src/game/gameLoop.ts`, `backend/src/socket/lobbyHandlers.ts`, `frontend/src/components/GameStatus.tsx`, `frontend/src/components/GameLayout.tsx`, plus test updates
+
+Added a new `TUTORIAL` phase between `WAITING` and `PLAYING` and increased the headline cooldown from 60s to 90s.
+
+New game flow:
+```
+WAITING → TUTORIAL (3 min) → PLAYING → BREAK → ... → FINISHED
+```
+
+During the TUTORIAL phase:
+- Headline input is disabled (players can only read)
+- Archive/seed headlines drip-feed into the timeline one at a time over ~3 minutes (~5 seconds per headline)
+- The host has time to explain the game rules
+- Yellow "Tutorial" phase badge in the HUD
+- Tutorial message in the centre column: "Watch the timeline build up — submissions open soon..."
+
+Technical changes:
+- `GamePhase` type extended with `'TUTORIAL'`
+- New `TUTORIAL_DURATION_MS` constant (3 min)
+- `GameLoopInstance` gained `seedDripHandle` and `archivePlayerId` fields
+- `startGame()` now transitions to TUTORIAL round 0 instead of PLAYING round 1
+- `computeNextPhase()` handles TUTORIAL → PLAYING round 1
+- New `startSeedDrip()` private method inserts seeds one by one and broadcasts `headline:new`
+- Seed insertion moved from synchronous loop at game start to async drip during TUTORIAL
+- `lobby:start_game` handler now passes `archivePlayerId` to the game loop manager
+- Cooldown constant `HEADLINE_COOLDOWN_MS` raised from 60_000 to 90_000
+- Migration 011 adds 'TUTORIAL' to the `session_status` enum
+
+## Trade-offs considered
+
+1. **No tutorial phase, just use round 1 as warmup:** Players start scoring immediately, no grace period for rules explanation. Rejected.
+2. **Insert all seeds at once during tutorial:** Simpler but boring — the timeline appears instantly. Rejected.
+3. **Drip seeds during tutorial (chosen):** Creates anticipation and visible activity during the rules explanation.
+4. **Keep 60s cooldown:** Playtest data showed median submission gap of 79s — players were spamming as fast as allowed. 90s gives more reading time without feeling punishing.
+
+## Justified rationale
+
+Playtest 1 showed 50.8% of submissions happened within 70-79s of the previous one and first-round submissions were rushed (no time to read). The tutorial phase gives players time to absorb the rules and see the timeline build up, and the longer cooldown encourages actual reading of other players' headlines during play.
+
+---
+
 # Game end page with full-game recap
 
 ## What changed
