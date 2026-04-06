@@ -84,11 +84,12 @@ export function setSummaryClient(client: OpenAIClient): void {
 // ============================================================================
 
 /**
- * Fetch all headlines for a specific round.
+ * Fetch all headlines for a range of rounds (inclusive).
  */
-async function fetchRoundHeadlines(
+async function fetchHeadlinesInRange(
   sessionId: string,
-  roundNo: number
+  fromRound: number,
+  toRound: number
 ): Promise<RoundHeadlineInput[]> {
   const result = await pool.query(
     `SELECT
@@ -102,9 +103,9 @@ async function fetchRoundHeadlines(
       p.nickname as player
     FROM game_session_headlines h
     JOIN session_players p ON h.player_id = p.id
-    WHERE h.session_id = $1 AND h.round_no = $2
+    WHERE h.session_id = $1 AND h.round_no BETWEEN $2 AND $3
     ORDER BY h.created_at ASC`,
-    [sessionId, roundNo]
+    [sessionId, fromRound, toRound]
   );
 
   return result.rows.map((row) => ({
@@ -195,18 +196,19 @@ async function markSummaryError(summaryId: string, errorMessage: string): Promis
 export async function generateRoundSummary(
   params: GenerateSummaryParams
 ): Promise<SummaryResult> {
-  const { sessionId, roundNo, maxRounds } = params;
+  const { sessionId, fromRound, toRound, maxRounds } = params;
 
-  // Mark as generating before starting
-  const summaryId = await markSummaryGenerating(sessionId, roundNo);
+  // Store the summary keyed by toRound (the most recent round in the range)
+  const summaryId = await markSummaryGenerating(sessionId, toRound);
 
   try {
-    // Fetch headlines for this round
-    const headlines = await fetchRoundHeadlines(sessionId, roundNo);
+    // Fetch headlines for the full range
+    const headlines = await fetchHeadlinesInRange(sessionId, fromRound, toRound);
 
     // Build the prompt
     const prompt = buildSummaryPrompt({
-      roundNo,
+      fromRound,
+      toRound,
       totalRounds: maxRounds,
       headlines,
     });

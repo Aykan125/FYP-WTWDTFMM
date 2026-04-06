@@ -1,3 +1,37 @@
+# New round format: 4 rounds, 8 min each, selective summaries
+
+## What changed
+
+**Files:** `backend/src/game/gameLoop.ts`, `backend/src/game/summaryService.ts`, `backend/src/llm/summaryPrompt.ts`, `backend/src/llm/summaryTypes.ts`, `backend/db/migrations/012_round_format.sql`, `backend/tests/game/gameLoop.test.ts`
+
+The game is now 4 rounds of 8 minutes each, with variable break durations and only one mid-game summary:
+
+```
+Round 1 (8 min) → Break 1 (3 min, no summary)
+Round 2 (8 min) → Break 2 (5 min, summary covering rounds 1-2)
+Round 3 (8 min) → Break 3 (3 min, no summary)
+Round 4 (8 min) → FINISHED
+```
+
+Implementation:
+- New `BREAK_SCHEDULE` constant in `gameLoop.ts` controls per-break duration and whether a summary is generated. The existing `break_minutes` column is no longer used by the new logic but kept for backwards compatibility.
+- `ROUND_SPEED_WEIGHTS` changed from `[3, 5, 7]` to `[2, 4, 6, 8]` — 4 rounds summing to weight 20, rounds still accelerate.
+- `generateRoundSummary` now accepts `fromRound` and `toRound` instead of a single `roundNo`. The break 2 summary is generated with `fromRound=1, toRound=2` so it covers both rounds.
+- `buildSummaryPrompt` updated to describe a period (e.g. "Rounds 1-2 of 4") instead of a single round.
+- Migration `012_round_format.sql` sets default `play_minutes=8`, `max_rounds=4` for new sessions. Existing sessions keep their stored values.
+
+## Trade-offs considered
+
+1. **Schema change (add `from_round` column to round_summaries):** More correct but requires a migration. Rejected — the single `round_no` field storing `toRound` is sufficient since summaries are keyed by the break they appear in.
+2. **Keep 3 rounds but add intro/outro breaks:** Simpler code change but doesn't give enough game time for 11 players. Rejected.
+3. **Chosen: 4 rounds with BREAK_SCHEDULE:** Each break has its own config, selective summary generation is trivial, the structure matches playtest feedback (need more reading time, one mid-game recap is enough).
+
+## Justified rationale
+
+The previous 3-round 15-minute format was too long per round (players spammed headlines) and had three mid-game summaries, which felt repetitive. The new format gives shorter, more focused rounds, a single well-earned mid-game recap, and leaves the final moment for an end-of-game page (added in a separate commit). The [2,4,6,8] weights preserve the narrative acceleration effect across 4 rounds.
+
+---
+
 # Weighted planet tallies + 5-word frontend tags
 
 ## What changed

@@ -94,23 +94,30 @@ function formatHeadline(headline: RoundHeadlineInput, index: number): string {
  * Build the summary prompt from the input data.
  */
 export function buildSummaryPrompt(input: SummaryPromptInput): string {
-  const { roundNo, totalRounds, headlines } = input;
+  const { fromRound, toRound, totalRounds, headlines } = input;
 
   // Format all headlines
   const formattedHeadlines = headlines.length > 0
     ? headlines.map((h, i) => formatHeadline(h, i)).join('\n\n')
-    : 'No headlines were submitted this round.';
+    : 'No headlines were submitted in this period.';
 
   // Count unique players
   const uniquePlayers = new Set(headlines.map(h => h.player));
   const playerCount = uniquePlayers.size;
 
-  return `You are a future historian summarizing events from a timeline where AI has transformed society. Round ${roundNo} of ${totalRounds} has just ended.
+  // Describe the period being summarised
+  const periodLabel = fromRound === toRound
+    ? `Round ${toRound} of ${totalRounds}`
+    : (fromRound === 1 && toRound === totalRounds
+      ? `The entire timeline (all ${totalRounds} rounds)`
+      : `Rounds ${fromRound}-${toRound} of ${totalRounds}`);
 
-=== HEADLINES FROM THIS ROUND ===
+  return `You are a future historian summarizing events from a timeline where AI has transformed society. ${periodLabel} has just ended.
+
+=== HEADLINES FROM THIS PERIOD ===
 ${formattedHeadlines}
 
-=== ROUND STATISTICS ===
+=== PERIOD STATISTICS ===
 - Total headlines: ${headlines.length}
 - Contributors: ${playerCount}
 
