@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { GameLayout } from './GameLayout';
 import { Card, Button } from './ui';
-import { Headline, RoundSummary as RoundSummaryType } from '../hooks/useSocket';
+import { Headline, RoundSummary as RoundSummaryType, FinalSummary } from '../hooks/useSocket';
 import { useGameTimeProgress } from '../hooks/useGameTimeProgress';
 
 interface HostLobbyProps {
@@ -19,6 +19,7 @@ interface HostLobbyProps {
   timelineSpeedRatio: number;
   headlines: Headline[];
   roundSummary: RoundSummaryType | null;
+  finalSummary: FinalSummary | null;
   onStartGame: () => void;
   onBack: () => void;
   onSubmitHeadline: (headline: string) => Promise<{ success: boolean; error?: string; cooldownMs?: number }>;
@@ -39,6 +40,7 @@ export function HostLobby({
   timelineSpeedRatio,
   headlines,
   roundSummary,
+  finalSummary,
   onStartGame,
   onBack,
   onSubmitHeadline,
@@ -118,6 +120,7 @@ export function HostLobby({
       timelineSpeedRatio={timelineSpeedRatio}
       headlines={headlines}
       roundSummary={roundSummary}
+      finalSummary={finalSummary}
       priorityPlanet={priorityPlanet}
       myScore={myScore}
       totalGameMins={totalGameMins}

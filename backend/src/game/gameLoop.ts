@@ -7,7 +7,7 @@ import {
 import { Server } from 'socket.io';
 import { migratePlanetState } from './planetWeighting.js';
 import { DEFAULT_PLANETS } from './scoringTypes.js';
-import { generateRoundSummary } from './summaryService.js';
+import { generateRoundSummary, generateFinalNarrativeSummary } from './summaryService.js';
 import { getPlayerScoreBreakdowns } from './scoringService.js';
 import { SEED_HEADLINES } from './seedHeadlines.js';
 
@@ -243,11 +243,11 @@ class GameLoopInstance {
       }
     }
 
-    // Generate final full-game summary when transitioning to FINISHED
+    // Generate final narrative summary when transitioning to FINISHED
     if (toPhase === 'FINISHED' && fromPhase !== 'FINISHED') {
-      this.generateAndBroadcastSummary(roundNo, 1).catch((err) => {
+      this.generateAndBroadcastFinalNarrative().catch((err) => {
         console.error(
-          `[GameLoop ${this.state.joinCode}] Final summary generation failed:`,
+          `[GameLoop ${this.state.joinCode}] Final narrative summary generation failed:`,
           err
         );
       });
@@ -484,6 +484,56 @@ class GameLoopInstance {
 
       console.error(
         `[GameLoop ${this.state.joinCode}] Summary generation failed for rounds ${fromRound}-${toRound}:`,
+        error
+      );
+    }
+  }
+
+  /**
+   * Generate the final game-end narrative summary asynchronously.
+   * Broadcast as a `game:final_summary` event so the frontend can render
+   * the experience reports on the GameEnd page.
+   */
+  private async generateAndBroadcastFinalNarrative(): Promise<void> {
+    const roomName = `session:${this.state.joinCode}`;
+    const roundNo = this.state.maxRounds;
+
+    // Emit "generating" status immediately
+    this.io.to(roomName).emit('game:final_summary', {
+      roundNo,
+      status: 'generating',
+    });
+
+    console.log(
+      `[GameLoop ${this.state.joinCode}] Generating final narrative summary...`
+    );
+
+    try {
+      const result = await generateFinalNarrativeSummary({
+        sessionId: this.state.sessionId,
+        maxRounds: this.state.maxRounds,
+      });
+
+      this.io.to(roomName).emit('game:final_summary', {
+        roundNo,
+        status: 'completed',
+        summary: result.summary,
+      });
+
+      console.log(
+        `[GameLoop ${this.state.joinCode}] Final narrative summary generated (${result.usage?.inputTokens ?? 0} in, ${result.usage?.outputTokens ?? 0} out tokens)`
+      );
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
+      this.io.to(roomName).emit('game:final_summary', {
+        roundNo,
+        status: 'error',
+        error: errorMessage,
+      });
+
+      console.error(
+        `[GameLoop ${this.state.joinCode}] Final narrative summary generation failed:`,
         error
       );
     }

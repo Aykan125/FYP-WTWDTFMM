@@ -1,5 +1,5 @@
-import { Headline, Player, RoundSummary as RoundSummaryType } from '../hooks/useSocket';
-import { Card, SectionTitle, Badge, Button } from './ui';
+import { Headline, Player, FinalSummary } from '../hooks/useSocket';
+import { Card, SectionTitle, Button } from './ui';
 import { ScoreBarChart } from './ScoreBarChart';
 
 interface GameEndProps {
@@ -10,7 +10,7 @@ interface GameEndProps {
   maxRounds: number;
   totalGameMins: number;
   currentGameMins: number;
-  roundSummary: RoundSummaryType | null;
+  finalSummary: FinalSummary | null;
   onBack: () => void;
 }
 
@@ -22,7 +22,7 @@ export function GameEnd({
   maxRounds,
   totalGameMins,
   currentGameMins,
-  roundSummary,
+  finalSummary,
   onBack,
 }: GameEndProps) {
   // Filter out Archive system player
@@ -70,9 +70,10 @@ export function GameEnd({
     (a, b) => b[1] - a[1]
   )[0];
 
-  const isGenerating = !roundSummary || roundSummary.status === 'generating';
+  const isGenerating = !finalSummary || finalSummary.status === 'generating';
   const hasSummary =
-    roundSummary?.status === 'completed' && roundSummary.summary;
+    finalSummary?.status === 'completed' && finalSummary.summary;
+  const reports = hasSummary ? finalSummary.summary?.reports ?? [] : [];
 
   return (
     <main className="flex-1 min-h-0 overflow-y-auto">
@@ -144,15 +145,15 @@ export function GameEnd({
           </div>
         </Card>
 
-        {/* Final Narrative Summary */}
+        {/* Final Narrative — Experience Reports */}
         <Card padding="md">
-          <SectionTitle>The {maxRounds * 5}-Year Recap</SectionTitle>
+          <SectionTitle>Experience Reports From These Years</SectionTitle>
 
           {isGenerating && (
             <div className="py-6">
               <div className="flex items-center gap-2 text-sm text-gray-400">
                 <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-200 border-t-indigo-500" />
-                <span>Writing the final recap of the game...</span>
+                <span>Writing the experience reports...</span>
               </div>
               <div className="mt-4 space-y-2">
                 <div className="h-3 bg-gray-100 rounded animate-pulse w-full" />
@@ -161,53 +162,54 @@ export function GameEnd({
                 <div className="h-3 bg-gray-100 rounded animate-pulse w-full" />
                 <div className="h-3 bg-gray-100 rounded animate-pulse w-3/4" />
               </div>
-            </div>
-          )}
-
-          {roundSummary?.status === 'error' && (
-            <div className="py-4">
-              <p className="text-sm text-red-500">Final summary unavailable</p>
-              {roundSummary.error && (
-                <p className="text-xs text-red-400 mt-1">{roundSummary.error}</p>
-              )}
-            </div>
-          )}
-
-          {hasSummary && roundSummary.summary && (
-            <div className="space-y-4">
-              <div className="flex gap-2 text-xs text-gray-400">
-                <span>{roundSummary.summary.roundStats.headlineCount} developments</span>
-                <span>&middot;</span>
-                <span>{roundSummary.summary.roundStats.playerCount} sources</span>
-              </div>
-
-              <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">
-                {roundSummary.summary.narrative}
+              <p className="text-xs text-gray-400 mt-4">
+                The AI is writing first-person accounts from different characters living through your timeline. This may take 30-60 seconds.
               </p>
+            </div>
+          )}
 
-              {roundSummary.summary.themes.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {roundSummary.summary.themes.map((theme, i) => (
-                    <Badge key={i} variant="blue">{theme}</Badge>
-                  ))}
-                </div>
+          {finalSummary?.status === 'error' && (
+            <div className="py-4">
+              <p className="text-sm text-red-500">Experience reports unavailable</p>
+              {finalSummary.error && (
+                <p className="text-xs text-red-400 mt-1">{finalSummary.error}</p>
               )}
+            </div>
+          )}
 
-              {roundSummary.summary.highlightedHeadlines.length > 0 && (
-                <div className="space-y-2 pt-2">
-                  <span className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">
-                    Key Developments
-                  </span>
-                  {roundSummary.summary.highlightedHeadlines.map((h, i) => (
-                    <div key={i} className="pl-3 border-l-2 border-indigo-200">
-                      <p className="text-sm font-medium text-gray-700">&ldquo;{h.headline}&rdquo;</p>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {h.source} &middot; {h.significance}
-                      </p>
+          {hasSummary && reports.length > 0 && (
+            <div className="space-y-8">
+              <p className="text-xs text-gray-400">
+                Three fictional characters who lived through your timeline.
+              </p>
+              {reports.map((report, i) => (
+                <div key={i} className="space-y-3">
+                  <div className="border-l-2 border-indigo-300 pl-3">
+                    <div className="text-sm font-semibold text-gray-700">{report.character.name}</div>
+                    <div className="text-xs text-gray-500">{report.character.role}</div>
+                    <div className="text-[11px] text-gray-400 mt-0.5">{report.character.era}</div>
+                  </div>
+
+                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
+                    {report.story}
+                  </p>
+
+                  {report.themes_touched.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {report.themes_touched.map((theme, j) => (
+                        <span
+                          key={j}
+                          className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700"
+                        >
+                          {theme}
+                        </span>
+                      ))}
                     </div>
-                  ))}
+                  )}
+
+                  {i < reports.length - 1 && <div className="border-t border-gray-100 pt-2" />}
                 </div>
-              )}
+              ))}
             </div>
           )}
         </Card>

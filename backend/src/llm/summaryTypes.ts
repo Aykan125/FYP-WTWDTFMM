@@ -99,6 +99,58 @@ export interface SummaryResult {
  */
 export type SummaryStatus = 'pending' | 'generating' | 'completed' | 'error';
 
+// ============================================================================
+// Narrative (final game-end) Summary Types
+// ============================================================================
+
+/**
+ * A single first-person experience report from a fictional character.
+ */
+export interface NarrativeReport {
+  character: {
+    name: string;
+    role: string;
+    era: string;
+  };
+  story: string;
+  themes_touched: string[];
+}
+
+/**
+ * Full output of the narrative final summary — multiple reports
+ * illustrating different facets of the timeline.
+ */
+export interface NarrativeSummaryOutput {
+  reports: NarrativeReport[];
+}
+
+/**
+ * Input for the narrative prompt builder.
+ */
+export interface NarrativePromptInput {
+  headlines: Array<{ date: string; headline: string }>;
+}
+
+/**
+ * Parameters for generating a final narrative summary.
+ */
+export interface GenerateNarrativeParams {
+  sessionId: string;
+  maxRounds: number;
+}
+
+/**
+ * Result from narrative summary generation.
+ */
+export interface NarrativeResult {
+  summary: NarrativeSummaryOutput;
+  model: string;
+  usage?: {
+    inputTokens: number;
+    outputTokens: number;
+  };
+}
+
 /**
  * Database row for round_summaries table.
  */

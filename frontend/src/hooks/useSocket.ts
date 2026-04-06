@@ -79,6 +79,26 @@ export interface RoundSummary {
   error: string | null;
 }
 
+export interface NarrativeReport {
+  character: {
+    name: string;
+    role: string;
+    era: string;
+  };
+  story: string;
+  themes_touched: string[];
+}
+
+export interface NarrativeSummaryOutput {
+  reports: NarrativeReport[];
+}
+
+export interface FinalSummary {
+  status: 'pending' | 'generating' | 'completed' | 'error';
+  summary: NarrativeSummaryOutput | null;
+  error: string | null;
+}
+
 interface SubmitHeadlineResult {
   success: boolean;
   headline?: Headline;
@@ -92,12 +112,14 @@ interface UseSocketReturn {
   sessionState: SessionState | null;
   headlines: Headline[];
   roundSummary: RoundSummary | null;
+  finalSummary: FinalSummary | null;
   joinLobby: (joinCode: string, playerId: string) => Promise<boolean>;
   leaveLobby: () => void;
   startGame: (joinCode: string) => Promise<boolean>;
   submitHeadline: (joinCode: string, headline: string) => Promise<SubmitHeadlineResult>;
   loadHeadlines: (joinCode: string, roundNo?: number) => Promise<boolean>;
   requestSummary: (joinCode: string, roundNo: number) => Promise<boolean>;
+  requestFinalSummary: (joinCode: string, roundNo: number) => Promise<boolean>;
 }
 
 export function useSocket(): UseSocketReturn {
@@ -106,6 +128,7 @@ export function useSocket(): UseSocketReturn {
   const [sessionState, setSessionState] = useState<SessionState | null>(null);
   const [headlines, setHeadlines] = useState<Headline[]>([]);
   const [roundSummary, setRoundSummary] = useState<RoundSummary | null>(null);
+  const [finalSummary, setFinalSummary] = useState<FinalSummary | null>(null);
   const rejoinRef = useRef<{ joinCode: string; playerId: string } | null>(null);
 
   useEffect(() => {
@@ -186,6 +209,16 @@ export function useSocket(): UseSocketReturn {
       setRoundSummary({
         roundNo: data.roundNo,
         status: data.status as RoundSummary['status'],
+        summary: data.summary ?? null,
+        error: data.error ?? null,
+      });
+    });
+
+    // Listen for final narrative summary updates (game-end page)
+    socket.on('game:final_summary', (data: { roundNo: number; status: string; summary?: NarrativeSummaryOutput; error?: string }) => {
+      console.log('Final summary update:', data);
+      setFinalSummary({
+        status: data.status as FinalSummary['status'],
         summary: data.summary ?? null,
         error: data.error ?? null,
       });
@@ -290,6 +323,7 @@ export function useSocket(): UseSocketReturn {
       setSessionState(null);
       setHeadlines([]);
       setRoundSummary(null);
+      setFinalSummary(null);
     }
   }, []);
 
@@ -372,17 +406,47 @@ export function useSocket(): UseSocketReturn {
       socketRef.current.emit(
         'round:get_summary',
         { joinCode, roundNo },
-        (response: { success: boolean; status?: string; summary?: RoundSummaryOutput; error?: string }) => {
+        (response: { success: boolean; status?: string; summaryType?: string; summary?: RoundSummaryOutput; error?: string }) => {
           if (response.success) {
-            setRoundSummary({
-              roundNo,
-              status: (response.status ?? 'pending') as RoundSummary['status'],
+            // Only set as roundSummary if it's a historical recap (not narrative)
+            if (response.summaryType !== 'narrative') {
+              setRoundSummary({
+                roundNo,
+                status: (response.status ?? 'pending') as RoundSummary['status'],
+                summary: response.summary ?? null,
+                error: response.error ?? null,
+              });
+            }
+            resolve(true);
+          } else {
+            console.error('Failed to get round summary:', response.error);
+            resolve(false);
+          }
+        }
+      );
+    });
+  }, []);
+
+  const requestFinalSummary = useCallback(async (joinCode: string, roundNo: number): Promise<boolean> => {
+    return new Promise((resolve) => {
+      if (!socketRef.current) {
+        resolve(false);
+        return;
+      }
+
+      socketRef.current.emit(
+        'round:get_summary',
+        { joinCode, roundNo },
+        (response: { success: boolean; status?: string; summaryType?: string; summary?: NarrativeSummaryOutput; error?: string }) => {
+          if (response.success && response.summaryType === 'narrative') {
+            setFinalSummary({
+              status: (response.status ?? 'pending') as FinalSummary['status'],
               summary: response.summary ?? null,
               error: response.error ?? null,
             });
             resolve(true);
           } else {
-            console.error('Failed to get round summary:', response.error);
+            // Not a narrative summary or failed
             resolve(false);
           }
         }
@@ -396,12 +460,14 @@ export function useSocket(): UseSocketReturn {
     sessionState,
     headlines,
     roundSummary,
+    finalSummary,
     joinLobby,
     leaveLobby,
     startGame,
     submitHeadline,
     loadHeadlines,
     requestSummary,
+    requestFinalSummary,
   };
 }
 

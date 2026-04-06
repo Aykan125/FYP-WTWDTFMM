@@ -897,6 +897,7 @@ export function setupLobbyHandlers(io: Server): void {
         callback?.({
           success: true,
           status: summaryData.status,
+          summaryType: summaryData.summaryType,
           summary: summaryData.summary,
           error: summaryData.error,
         });
