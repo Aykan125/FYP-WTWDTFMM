@@ -15,8 +15,20 @@ import urllib.request
 from pathlib import Path
 
 SESSION_ID = "64cd0a5b-3af6-413f-8ce2-8c3cd6cb31cd"
-CONN = os.environ.get("DATABASE_URL", "")
 MODEL = "gpt-5.2"
+
+# Load DATABASE_URL from env or backend/.env
+CONN = os.environ.get("DATABASE_URL")
+if not CONN:
+    env_file = Path(__file__).resolve().parents[2] / "backend" / ".env"
+    if env_file.exists():
+        for line in env_file.read_text().splitlines():
+            if line.startswith("DATABASE_URL="):
+                CONN = line.split("=", 1)[1].strip()
+                break
+if not CONN:
+    print("ERROR: DATABASE_URL not found in env or backend/.env", file=sys.stderr)
+    sys.exit(1)
 
 # ---- Load API key ----
 API_KEY = os.environ.get("OPENAI_API_KEY")
