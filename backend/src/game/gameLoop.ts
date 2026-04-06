@@ -11,9 +11,39 @@ import { generateRoundSummary } from './summaryService.js';
 import { getPlayerScoreBreakdowns } from './scoringService.js';
 import { SEED_HEADLINES } from './seedHeadlines.js';
 
-const ROUND_SPEED_WEIGHTS = [3, 5, 7];
+const ROUND_SPEED_WEIGHTS = [2, 4, 6, 8];
 const TOTAL_INGAME_MS = 20 * 365.25 * 24 * 60 * 60 * 1000;
 const TUTORIAL_DURATION_MS = 3 * 60 * 1000; // 3 minutes
+
+/**
+ * Per-break configuration indexed by round number just completed.
+ * After round 1 → BREAK_SCHEDULE[0], after round 2 → BREAK_SCHEDULE[1], etc.
+ *
+ * Selective summary generation: only break 2 (after round 2) has a summary,
+ * and it covers rounds 1-2. The final summary (covering all 4 rounds) is
+ * generated on the FINISHED transition instead.
+ */
+interface BreakConfig {
+  durationMin: number;
+  generateSummary: boolean;
+  summaryFromRound: number | null; // inclusive; null means no summary
+}
+
+const BREAK_SCHEDULE: BreakConfig[] = [
+  { durationMin: 3, generateSummary: false, summaryFromRound: null },  // After R1
+  { durationMin: 5, generateSummary: true, summaryFromRound: 1 },      // After R2: covers R1-R2
+  { durationMin: 3, generateSummary: false, summaryFromRound: null },  // After R3
+];
+
+/** Exported for testing */
+export function getBreakConfig(roundNo: number): BreakConfig {
+  const idx = roundNo - 1;
+  if (idx < 0 || idx >= BREAK_SCHEDULE.length) {
+    // Fallback for rounds outside the schedule
+    return { durationMin: 3, generateSummary: false, summaryFromRound: null };
+  }
+  return BREAK_SCHEDULE[idx];
+}
 
 /** Exported for testing */
 export function computeRoundSpeedRatio(roundNo: number, playMinutes: number): number {
@@ -169,7 +199,8 @@ class GameLoopInstance {
       phaseEndsAt = new Date(now.getTime() + this.state.playMinutes * 60 * 1000);
     } else if (toPhase === 'BREAK') {
       this.state.timelineSpeedRatio = 0;
-      phaseEndsAt = new Date(now.getTime() + this.state.breakMinutes * 60 * 1000);
+      const breakCfg = getBreakConfig(roundNo);
+      phaseEndsAt = new Date(now.getTime() + breakCfg.durationMin * 60 * 1000);
     } else if (toPhase === 'FINISHED') {
       phaseStartedAt = now;
       phaseEndsAt = null;
@@ -199,14 +230,17 @@ class GameLoopInstance {
       this.seedDripHandle = null;
     }
 
-    // Generate round summary when transitioning to BREAK
+    // Generate round summary when transitioning to BREAK (only if this break has one)
     if (toPhase === 'BREAK') {
-      this.generateAndBroadcastSummary(roundNo).catch((err) => {
-        console.error(
-          `[GameLoop ${this.state.joinCode}] Summary generation failed:`,
-          err
-        );
-      });
+      const breakCfg = getBreakConfig(roundNo);
+      if (breakCfg.generateSummary && breakCfg.summaryFromRound !== null) {
+        this.generateAndBroadcastSummary(roundNo, breakCfg.summaryFromRound).catch((err) => {
+          console.error(
+            `[GameLoop ${this.state.joinCode}] Summary generation failed:`,
+            err
+          );
+        });
+      }
     }
 
     // Schedule next transition if not finished
@@ -397,48 +431,49 @@ class GameLoopInstance {
    * Generate and broadcast round summary asynchronously.
    * Called after transitioning to BREAK phase.
    */
-  private async generateAndBroadcastSummary(roundNo: number): Promise<void> {
+  private async generateAndBroadcastSummary(toRound: number, fromRound: number = toRound): Promise<void> {
     const roomName = `session:${this.state.joinCode}`;
 
-    // Emit "generating" status immediately
+    // Emit "generating" status immediately (use toRound as the storage key)
     this.io.to(roomName).emit('round:summary', {
-      roundNo,
+      roundNo: toRound,
       status: 'generating',
     });
 
     console.log(
-      `[GameLoop ${this.state.joinCode}] Generating summary for round ${roundNo}...`
+      `[GameLoop ${this.state.joinCode}] Generating summary for rounds ${fromRound}-${toRound}...`
     );
 
     try {
       const result = await generateRoundSummary({
         sessionId: this.state.sessionId,
-        roundNo,
+        fromRound,
+        toRound,
         maxRounds: this.state.maxRounds,
       });
 
       // Broadcast completed summary
       this.io.to(roomName).emit('round:summary', {
-        roundNo,
+        roundNo: toRound,
         status: 'completed',
         summary: result.summary,
       });
 
       console.log(
-        `[GameLoop ${this.state.joinCode}] Summary generated for round ${roundNo} (${result.usage?.inputTokens ?? 0} in, ${result.usage?.outputTokens ?? 0} out tokens)`
+        `[GameLoop ${this.state.joinCode}] Summary generated for rounds ${fromRound}-${toRound} (${result.usage?.inputTokens ?? 0} in, ${result.usage?.outputTokens ?? 0} out tokens)`
       );
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
 
       // Broadcast error status
       this.io.to(roomName).emit('round:summary', {
-        roundNo,
+        roundNo: toRound,
         status: 'error',
         error: errorMessage,
       });
 
       console.error(
-        `[GameLoop ${this.state.joinCode}] Summary generation failed for round ${roundNo}:`,
+        `[GameLoop ${this.state.joinCode}] Summary generation failed for rounds ${fromRound}-${toRound}:`,
         error
       );
     }

@@ -58,9 +58,11 @@ export interface RoundHeadlineInput {
 
 /**
  * Full input for building the summary prompt.
+ * Can cover a single round (fromRound === toRound) or a range.
  */
 export interface SummaryPromptInput {
-  roundNo: number;
+  fromRound: number;
+  toRound: number;
   totalRounds: number;
   headlines: RoundHeadlineInput[];
 }
@@ -71,10 +73,12 @@ export interface SummaryPromptInput {
 
 /**
  * Parameters for generating a round summary.
+ * Can cover a single round (fromRound === toRound) or a range (e.g. rounds 1-2).
  */
 export interface GenerateSummaryParams {
   sessionId: string;
-  roundNo: number;
+  fromRound: number;
+  toRound: number;
   maxRounds: number;
 }
 

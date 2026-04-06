@@ -1,4 +1,4 @@
-import { computeNextPhase, computeRoundSpeedRatio } from '../../src/game/gameLoop';
+import { computeNextPhase, computeRoundSpeedRatio, getBreakConfig } from '../../src/game/gameLoop';
 
 describe('computeNextPhase', () => {
   describe('PLAYING phase transitions', () => {
@@ -103,38 +103,45 @@ describe('computeRoundSpeedRatio', () => {
   const TOTAL_INGAME_MS = 20 * 365.25 * 24 * 60 * 60 * 1000;
   const PLAY_MINUTES = 2;
   const playMs = PLAY_MINUTES * 60_000;
+  const TOTAL_WEIGHT = 20; // 2 + 4 + 6 + 8
 
-  it('round 1 uses weight 3/15', () => {
-    const expected = ((3 / 15) * TOTAL_INGAME_MS) / playMs;
+  it('round 1 uses weight 2/20', () => {
+    const expected = ((2 / TOTAL_WEIGHT) * TOTAL_INGAME_MS) / playMs;
     expect(computeRoundSpeedRatio(1, PLAY_MINUTES)).toBeCloseTo(expected, 10);
   });
 
-  it('round 2 uses weight 5/15', () => {
-    const expected = ((5 / 15) * TOTAL_INGAME_MS) / playMs;
+  it('round 2 uses weight 4/20', () => {
+    const expected = ((4 / TOTAL_WEIGHT) * TOTAL_INGAME_MS) / playMs;
     expect(computeRoundSpeedRatio(2, PLAY_MINUTES)).toBeCloseTo(expected, 10);
   });
 
-  it('round 3 uses weight 7/15', () => {
-    const expected = ((7 / 15) * TOTAL_INGAME_MS) / playMs;
+  it('round 3 uses weight 6/20', () => {
+    const expected = ((6 / TOTAL_WEIGHT) * TOTAL_INGAME_MS) / playMs;
     expect(computeRoundSpeedRatio(3, PLAY_MINUTES)).toBeCloseTo(expected, 10);
   });
 
-  it('round 4+ clamps to weight 7 (last weight)', () => {
-    expect(computeRoundSpeedRatio(4, PLAY_MINUTES)).toBeCloseTo(
-      computeRoundSpeedRatio(3, PLAY_MINUTES),
+  it('round 4 uses weight 8/20', () => {
+    const expected = ((8 / TOTAL_WEIGHT) * TOTAL_INGAME_MS) / playMs;
+    expect(computeRoundSpeedRatio(4, PLAY_MINUTES)).toBeCloseTo(expected, 10);
+  });
+
+  it('round 5+ clamps to weight 8 (last weight)', () => {
+    expect(computeRoundSpeedRatio(5, PLAY_MINUTES)).toBeCloseTo(
+      computeRoundSpeedRatio(4, PLAY_MINUTES),
       10
     );
     expect(computeRoundSpeedRatio(99, PLAY_MINUTES)).toBeCloseTo(
-      computeRoundSpeedRatio(3, PLAY_MINUTES),
+      computeRoundSpeedRatio(4, PLAY_MINUTES),
       10
     );
   });
 
-  it('ratios across 3 rounds sum to cover exactly 20 in-game years per play minute', () => {
+  it('ratios across 4 rounds sum to cover exactly 20 in-game years per play minute', () => {
     const total =
       computeRoundSpeedRatio(1, PLAY_MINUTES) +
       computeRoundSpeedRatio(2, PLAY_MINUTES) +
-      computeRoundSpeedRatio(3, PLAY_MINUTES);
+      computeRoundSpeedRatio(3, PLAY_MINUTES) +
+      computeRoundSpeedRatio(4, PLAY_MINUTES);
     const expected = TOTAL_INGAME_MS / playMs;
     expect(total).toBeCloseTo(expected, 10);
   });
@@ -145,12 +152,43 @@ describe('computeRoundSpeedRatio', () => {
     expect(ratio2min).toBeCloseTo(ratio4min * 2, 10);
   });
 
-  it('rounds accelerate: round 1 < round 2 < round 3', () => {
+  it('rounds accelerate: round 1 < round 2 < round 3 < round 4', () => {
     const r1 = computeRoundSpeedRatio(1, PLAY_MINUTES);
     const r2 = computeRoundSpeedRatio(2, PLAY_MINUTES);
     const r3 = computeRoundSpeedRatio(3, PLAY_MINUTES);
+    const r4 = computeRoundSpeedRatio(4, PLAY_MINUTES);
     expect(r1).toBeLessThan(r2);
     expect(r2).toBeLessThan(r3);
+    expect(r3).toBeLessThan(r4);
+  });
+});
+
+describe('getBreakConfig', () => {
+  it('break after round 1: 3 min, no summary', () => {
+    const cfg = getBreakConfig(1);
+    expect(cfg.durationMin).toBe(3);
+    expect(cfg.generateSummary).toBe(false);
+    expect(cfg.summaryFromRound).toBeNull();
+  });
+
+  it('break after round 2: 5 min, summary covering rounds 1-2', () => {
+    const cfg = getBreakConfig(2);
+    expect(cfg.durationMin).toBe(5);
+    expect(cfg.generateSummary).toBe(true);
+    expect(cfg.summaryFromRound).toBe(1);
+  });
+
+  it('break after round 3: 3 min, no summary', () => {
+    const cfg = getBreakConfig(3);
+    expect(cfg.durationMin).toBe(3);
+    expect(cfg.generateSummary).toBe(false);
+    expect(cfg.summaryFromRound).toBeNull();
+  });
+
+  it('out-of-range rounds default to 3 min no summary', () => {
+    expect(getBreakConfig(0).generateSummary).toBe(false);
+    expect(getBreakConfig(5).generateSummary).toBe(false);
+    expect(getBreakConfig(99).generateSummary).toBe(false);
   });
 });
 
