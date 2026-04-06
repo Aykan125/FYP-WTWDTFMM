@@ -11,7 +11,7 @@ import { ScoreCard } from './ScoreCard';
 import { GameEnd } from './GameEnd';
 import { PlayerList } from './PlayerList';
 import { Badge } from './ui';
-import { Headline, RoundSummary as RoundSummaryType } from '../hooks/useSocket';
+import { Headline, RoundSummary as RoundSummaryType, FinalSummary } from '../hooks/useSocket';
 import { useInGameNow } from '../hooks/useInGameNow';
 
 interface GameLayoutProps {
@@ -27,6 +27,7 @@ interface GameLayoutProps {
   timelineSpeedRatio: number;
   headlines: Headline[];
   roundSummary: RoundSummaryType | null;
+  finalSummary: FinalSummary | null;
   priorityPlanet: string | null;
   myScore: number;
   totalGameMins: number;
@@ -50,6 +51,7 @@ export function GameLayout({
   timelineSpeedRatio,
   headlines,
   roundSummary,
+  finalSummary,
   priorityPlanet,
   myScore,
   totalGameMins,
@@ -135,7 +137,7 @@ export function GameLayout({
           maxRounds={maxRounds}
           totalGameMins={totalGameMins}
           currentGameMins={currentGameMins}
-          roundSummary={roundSummary}
+          finalSummary={finalSummary}
           onBack={onBack}
         />
       )}

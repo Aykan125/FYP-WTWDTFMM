@@ -15,9 +15,17 @@ import {
   summaryJsonSchema,
 } from '../llm/summaryPrompt.js';
 import {
+  buildNarrativePrompt,
+  buildNarrativeInstructions,
+  narrativeJsonSchema,
+} from '../llm/narrativePrompt.js';
+import {
   GenerateSummaryParams,
+  GenerateNarrativeParams,
   SummaryResult,
+  NarrativeResult,
   RoundSummaryOutput,
+  NarrativeSummaryOutput,
   RoundHeadlineInput,
   SummaryStatus,
 } from '../llm/summaryTypes.js';
@@ -121,14 +129,18 @@ async function fetchHeadlinesInRange(
 /**
  * Create or update a summary record with 'generating' status.
  */
-async function markSummaryGenerating(sessionId: string, roundNo: number): Promise<string> {
+async function markSummaryGenerating(
+  sessionId: string,
+  roundNo: number,
+  summaryType: 'historical' | 'narrative' = 'historical'
+): Promise<string> {
   const result = await pool.query(
-    `INSERT INTO round_summaries (session_id, round_no, status, summary_data)
-     VALUES ($1, $2, 'generating', '{}')
+    `INSERT INTO round_summaries (session_id, round_no, status, summary_data, summary_type)
+     VALUES ($1, $2, 'generating', '{}', $3)
      ON CONFLICT (session_id, round_no)
-     DO UPDATE SET status = 'generating', error_message = NULL
+     DO UPDATE SET status = 'generating', error_message = NULL, summary_type = $3
      RETURNING id`,
-    [sessionId, roundNo]
+    [sessionId, roundNo, summaryType]
   );
   return result.rows[0].id;
 }
@@ -138,7 +150,7 @@ async function markSummaryGenerating(sessionId: string, roundNo: number): Promis
  */
 async function markSummaryCompleted(
   summaryId: string,
-  summaryData: RoundSummaryOutput,
+  summaryData: RoundSummaryOutput | NarrativeSummaryOutput,
   model: string,
   inputTokens: number | undefined,
   outputTokens: number | undefined,
@@ -247,6 +259,81 @@ export async function generateRoundSummary(
 }
 
 /**
+ * Fetch all headlines from a session in chronological order, formatted
+ * as `[YYYY-MM] headline` for the narrative prompt.
+ */
+async function fetchAllHeadlinesForNarrative(
+  sessionId: string
+): Promise<Array<{ date: string; headline: string }>> {
+  const result = await pool.query(
+    `SELECT
+      to_char(in_game_submitted_at, 'YYYY-MM') as date,
+      COALESCE(selected_headline, headline_text) as headline
+    FROM game_session_headlines
+    WHERE session_id = $1 AND in_game_submitted_at IS NOT NULL
+    ORDER BY in_game_submitted_at ASC`,
+    [sessionId]
+  );
+  return result.rows.map((row) => ({
+    date: row.date,
+    headline: row.headline,
+  }));
+}
+
+/**
+ * Generate the final game-end narrative summary.
+ *
+ * Unlike the historical recap used during BREAK, this generates a set
+ * of fictional first-person experience reports from different characters
+ * living through the timeline.
+ *
+ * Stored in `round_summaries` with `summary_type = 'narrative'`, keyed
+ * by `round_no = maxRounds`.
+ */
+export async function generateFinalNarrativeSummary(
+  params: GenerateNarrativeParams
+): Promise<NarrativeResult> {
+  const { sessionId, maxRounds } = params;
+
+  // Store keyed by maxRounds with summary_type = 'narrative'
+  const summaryId = await markSummaryGenerating(sessionId, maxRounds, 'narrative');
+
+  try {
+    const headlines = await fetchAllHeadlinesForNarrative(sessionId);
+
+    const prompt = buildNarrativePrompt({ headlines });
+    const instructions = buildNarrativeInstructions();
+
+    const client = getClient();
+    const result = await client.callResponsesApi<NarrativeSummaryOutput>({
+      input: prompt,
+      instructions,
+      jsonSchema: narrativeJsonSchema,
+    });
+
+    await markSummaryCompleted(
+      summaryId,
+      result.output,
+      result.model,
+      result.usage?.inputTokens,
+      result.usage?.outputTokens,
+      { prompt, instructions },
+      result.rawText
+    );
+
+    return {
+      summary: result.output,
+      model: result.model,
+      usage: result.usage,
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    await markSummaryError(summaryId, errorMessage);
+    throw error;
+  }
+}
+
+/**
  * Get an existing round summary from the database.
  *
  * @param sessionId - The session ID
@@ -258,11 +345,12 @@ export async function getRoundSummary(
   roundNo: number
 ): Promise<{
   status: SummaryStatus;
-  summary: RoundSummaryOutput | null;
+  summaryType: 'historical' | 'narrative';
+  summary: RoundSummaryOutput | NarrativeSummaryOutput | null;
   error: string | null;
 } | null> {
   const result = await pool.query(
-    `SELECT status, summary_data, error_message
+    `SELECT status, summary_data, summary_type, error_message
      FROM round_summaries
      WHERE session_id = $1 AND round_no = $2`,
     [sessionId, roundNo]
@@ -275,6 +363,7 @@ export async function getRoundSummary(
   const row = result.rows[0];
   return {
     status: row.status as SummaryStatus,
+    summaryType: (row.summary_type as 'historical' | 'narrative') ?? 'historical',
     summary: row.status === 'completed' ? row.summary_data : null,
     error: row.error_message,
   };

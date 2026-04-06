@@ -21,7 +21,7 @@ function App() {
     isHost: boolean;
   } | null>(null);
 
-  const { connected, sessionState, headlines, roundSummary, joinLobby, leaveLobby, startGame, submitHeadline, loadHeadlines, requestSummary } = useSocket();
+  const { connected, sessionState, headlines, roundSummary, finalSummary, joinLobby, leaveLobby, startGame, submitHeadline, loadHeadlines, requestSummary, requestFinalSummary } = useSocket();
 
   // Load session from localStorage on mount
   useEffect(() => {
@@ -196,15 +196,15 @@ function App() {
     }
   }, [sessionState?.phase, sessionState?.currentRound, sessionData?.joinCode, roundSummary, requestSummary]);
 
-  // Request final summary on FINISHED and load all headlines for game-end stats
+  // Request final narrative summary on FINISHED and load all headlines for game-end stats
   useEffect(() => {
     if (sessionState?.phase === 'FINISHED' && sessionData?.joinCode) {
-      if (!roundSummary) {
-        requestSummary(sessionData.joinCode, sessionState.currentRound);
+      if (!finalSummary) {
+        requestFinalSummary(sessionData.joinCode, sessionState.currentRound);
       }
       loadHeadlines(sessionData.joinCode);
     }
-  }, [sessionState?.phase, sessionState?.currentRound, sessionData?.joinCode, roundSummary, requestSummary, loadHeadlines]);
+  }, [sessionState?.phase, sessionState?.currentRound, sessionData?.joinCode, finalSummary, requestFinalSummary, loadHeadlines]);
 
   // ─── Loading spinner (shared) ───
   const loadingScreen = (
@@ -238,6 +238,7 @@ function App() {
         timelineSpeedRatio={sessionState.timelineSpeedRatio}
         headlines={headlines}
         roundSummary={roundSummary}
+        finalSummary={finalSummary}
         onStartGame={handleStartGame}
         onBack={handleBack}
         onSubmitHeadline={handleSubmitHeadline}
@@ -259,6 +260,7 @@ function App() {
         timelineSpeedRatio={sessionState.timelineSpeedRatio}
         headlines={headlines}
         roundSummary={roundSummary}
+        finalSummary={finalSummary}
         onBack={handleBack}
         onSubmitHeadline={handleSubmitHeadline}
       />

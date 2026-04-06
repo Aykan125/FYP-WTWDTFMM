@@ -1,3 +1,36 @@
+# Final game-end summary uses fictional experience reports
+
+## What changed
+
+**Files:** `backend/src/llm/narrativePrompt.ts` (new), `backend/src/llm/summaryTypes.ts`, `backend/src/game/summaryService.ts`, `backend/src/game/gameLoop.ts`, `backend/src/socket/lobbyHandlers.ts`, `backend/db/migrations/013_summary_type.sql` (new), `frontend/src/hooks/useSocket.ts`, `frontend/src/components/GameEnd.tsx`, `frontend/src/components/GameLayout.tsx`, `frontend/src/components/HostLobby.tsx`, `frontend/src/components/JoinLobby.tsx`, `frontend/src/App.tsx`
+
+The end-of-game summary previously used the same historical-recap prompt as the mid-game BREAK summary. It now uses a different prompt that generates **3 fictional first-person "experience reports"** from different characters living through the timeline — varying in profession, geography, era, and emotional stakes.
+
+This was developed and validated in `experiments/narrative-summary/` against the playtest 1 timeline.
+
+Implementation:
+- New `backend/src/llm/narrativePrompt.ts` with the literary fiction prompt, instructions, and JSON schema (3 reports each with `character {name, role, era}`, `story` 500-1000 words, `themes_touched`)
+- New `generateFinalNarrativeSummary` function in `summaryService.ts` that fetches all headlines from a session ordered chronologically, calls the OpenAI Responses API with the narrative prompt, and stores the result
+- New `summary_type` column on `round_summaries` (migration 013) discriminates `'historical'` (BREAK summary) from `'narrative'` (final summary). The `getRoundSummary` function returns the type so the frontend knows which renderer to use
+- `gameLoop.ts` now calls `generateAndBroadcastFinalNarrative()` on the FINISHED transition instead of the historical recap. This emits a new `game:final_summary` event (not `round:summary`) so the frontend can handle it separately
+- `useSocket.ts` adds a `finalSummary` state, listens for `game:final_summary`, and exposes a `requestFinalSummary` method for reconnection recovery
+- `GameEnd.tsx` renders the experience reports inline — each character's name/role/era, the story, and the themes — with a loading state while the summary generates
+
+The mid-game BREAK summary (after round 2) still uses the historical recap prompt — only the final FINISHED summary changed.
+
+## Trade-offs considered
+
+1. **Reuse the historical recap for both:** Simpler, but the mid-game and final moments serve different purposes — the mid-game recap helps players catch up on what they missed, while the final moment is a chance for closure and reflection. Different content suits different goals.
+2. **Single narrative story (not multiple reports):** The earlier experiment generated one ~1600-word story. Rejected because it locked the entire game's recap into one character's perspective; multiple reports illuminate more facets of the timeline.
+3. **Synchronous summary generation before showing the end page:** Players would wait ~30-60 seconds staring at a blank screen. Rejected — async with a loading state is much better UX.
+4. **New `final_summaries` table:** Cleaner separation but more migration work. Rejected — `summary_type` discriminator on the existing `round_summaries` table is simpler.
+
+## Justified rationale
+
+The mid-game and final moments have different jobs. The mid-game break is functional — it recaps what just happened so players can plan the next round. The final moment is reflective — it gives players a chance to see the timeline they collectively built as something humans actually lived in. The first-person reports do that better than a third-person historical recap because they place specific events in the context of imagined personal lives, making the players' headlines feel like they mattered to someone.
+
+---
+
 # Remove planets from round summary generation
 
 ## What changed
