@@ -196,6 +196,16 @@ function App() {
     }
   }, [sessionState?.phase, sessionState?.currentRound, sessionData?.joinCode, roundSummary, requestSummary]);
 
+  // Request final summary on FINISHED and load all headlines for game-end stats
+  useEffect(() => {
+    if (sessionState?.phase === 'FINISHED' && sessionData?.joinCode) {
+      if (!roundSummary) {
+        requestSummary(sessionData.joinCode, sessionState.currentRound);
+      }
+      loadHeadlines(sessionData.joinCode);
+    }
+  }, [sessionState?.phase, sessionState?.currentRound, sessionData?.joinCode, roundSummary, requestSummary, loadHeadlines]);
+
   // ─── Loading spinner (shared) ───
   const loadingScreen = (
     <div className="h-[100dvh] overflow-hidden bg-gradient-to-b from-gray-50 to-gray-100/80 flex items-center justify-center">

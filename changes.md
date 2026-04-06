@@ -1,3 +1,33 @@
+# Game end page with full-game recap
+
+## What changed
+
+**Files:** `backend/src/game/gameLoop.ts`, `frontend/src/components/GameEnd.tsx` (new), `frontend/src/components/GameLayout.tsx`, `frontend/src/hooks/useSocket.ts`, `frontend/src/App.tsx`
+
+Replaced the plain lobby-style FINISHED screen with a dedicated end-of-game page that shows:
+- Final leaderboard (reuses `ScoreBarChart`)
+- Game statistics: total headlines, top scorer, most prolific player, avg plausibility score, most common planet, player count
+- Full-game historical recap summary covering all 4 rounds
+
+Implementation:
+- `gameLoop.ts` now triggers `generateAndBroadcastSummary(maxRounds, 1)` on the PLAYING→FINISHED transition. This runs async so the FINISHED phase begins immediately and the end page shows a loading state while the ~20-second summary generation completes.
+- The generated summary is stored in `round_summaries` with `round_no = maxRounds` (no conflict since there's no break after the last round in the new format).
+- `useSocket.ts` now preserves the round summary across phase transitions except PLAYING/TUTORIAL/WAITING (previously cleared on any non-BREAK transition).
+- `App.tsx` requests the summary on entering FINISHED (for reconnection recovery) and loads all headlines so the statistics panel has complete data.
+- `GameEnd.tsx` is a new component showing the leaderboard, stats, and summary with a loading state while the recap is being generated.
+
+## Trade-offs considered
+
+1. **Synchronous summary before transitioning to FINISHED:** Cleaner code — end page loads fully populated. Rejected because players wait ~20 seconds staring at the PLAYING phase without knowing the game is over.
+2. **Separate `game:finished` event with its own payload:** More explicit but duplicates the existing `round:summary` infrastructure. Rejected — reusing the existing summary flow is simpler and the UI distinguishes "final" from "break" via the phase context.
+3. **Dedicated `final_summaries` table:** More correct modeling but requires schema change. Rejected — storing in `round_summaries` with `round_no = maxRounds` works without migration.
+
+## Justified rationale
+
+The game previously ended abruptly with no recap of what the players had built. The end page gives closure — showing the story they told, the ranking they earned, and statistics that reward engagement. Using the existing summary infrastructure means no new LLM prompt, no new DB table, and no new socket events. The async generation keeps the UX snappy.
+
+---
+
 # New round format: 4 rounds, 8 min each, selective summaries
 
 ## What changed

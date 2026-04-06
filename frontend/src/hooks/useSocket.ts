@@ -10,7 +10,7 @@ export interface ScoreBreakdown {
   planetBonus: number;
 }
 
-interface Player {
+export interface Player {
   id: string;
   nickname: string;
   isHost: boolean;
@@ -174,8 +174,8 @@ export function useSocket(): UseSocketReturn {
     socket.on('game:state', (state: SessionState) => {
       console.log('Game state updated:', state);
       setSessionState(state);
-      // Clear round summary when leaving BREAK phase
-      if (state.phase !== 'BREAK') {
+      // Clear round summary only when returning to PLAYING (keep it for BREAK and FINISHED)
+      if (state.phase === 'PLAYING' || state.phase === 'TUTORIAL' || state.phase === 'WAITING') {
         setRoundSummary(null);
       }
     });

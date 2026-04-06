@@ -243,6 +243,16 @@ class GameLoopInstance {
       }
     }
 
+    // Generate final full-game summary when transitioning to FINISHED
+    if (toPhase === 'FINISHED' && fromPhase !== 'FINISHED') {
+      this.generateAndBroadcastSummary(roundNo, 1).catch((err) => {
+        console.error(
+          `[GameLoop ${this.state.joinCode}] Final summary generation failed:`,
+          err
+        );
+      });
+    }
+
     // Schedule next transition if not finished
     if (toPhase !== 'FINISHED' && phaseEndsAt) {
       const nextPhase = this.computeNextPhase(toPhase, roundNo);
