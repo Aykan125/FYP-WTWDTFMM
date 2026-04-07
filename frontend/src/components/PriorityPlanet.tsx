@@ -5,7 +5,7 @@ interface PriorityPlanetProps {
 }
 
 const PLANET_TAGS: Record<string, string[]> = {
-  EARTH:   ['Nature', 'Environment', 'Climate', 'Ecology', 'Sustainability'],
+  EARTH:   ['Nature', 'Environment', 'Climate', 'Humanity', 'Justice'],
   MARS:    ['War', 'Conflict', 'Military', 'Defense', 'Security'],
   MERCURY: ['Communication', 'Media', 'Journalism', 'Networks', 'Information'],
   VENUS:   ['Art', 'Beauty', 'Culture', 'Entertainment', 'Creativity'],
