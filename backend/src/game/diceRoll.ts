@@ -10,7 +10,7 @@ import { HeadlineBands, PlausibilityBand } from '../llm/jurorPrompt.js';
 // ============================================================================
 
 export interface DiceRollResult {
-  /** Raw roll value 0-100 */
+  /** Raw roll value 1-100 */
   roll: number;
   /** Mapped band 1-5 */
   band: PlausibilityBand;
@@ -24,18 +24,19 @@ export interface DiceRollResult {
  * Band boundaries for mapping roll to band.
  * Target distribution: 10% / 35% / 40% / 12% / 3%
  *
- * Band 1: 0-9    (10 values, 9.9%)  - inevitable
- * Band 2: 10-44  (35 values, 34.7%) - probable
- * Band 3: 45-84  (40 values, 39.6%) - plausible
- * Band 4: 85-96  (12 values, 11.9%) - possible
- * Band 5: 97-100 (4 values,  4.0%)  - preposterous
+ * Roll range is 1-100 (100 values total) so each percent maps cleanly:
+ * Band 1: 1-10   (10 values, 10%) - inevitable
+ * Band 2: 11-45  (35 values, 35%) - probable
+ * Band 3: 46-85  (40 values, 40%) - plausible
+ * Band 4: 86-97  (12 values, 12%) - possible
+ * Band 5: 98-100 (3 values,  3%)  - preposterous
  */
 const BAND_BOUNDARIES: { min: number; max: number; band: PlausibilityBand }[] = [
-  { min: 0, max: 9, band: 1 },
-  { min: 10, max: 44, band: 2 },
-  { min: 45, max: 84, band: 3 },
-  { min: 85, max: 96, band: 4 },
-  { min: 97, max: 100, band: 5 },
+  { min: 1, max: 10, band: 1 },
+  { min: 11, max: 45, band: 2 },
+  { min: 46, max: 85, band: 3 },
+  { min: 86, max: 97, band: 4 },
+  { min: 98, max: 100, band: 5 },
 ];
 
 // ============================================================================
@@ -43,16 +44,15 @@ const BAND_BOUNDARIES: { min: number; max: number; band: PlausibilityBand }[] = 
 // ============================================================================
 
 /**
- * Map a roll value (0-100) to a plausibility band (1-5).
- * Uses equal-width bands of 20 each (except band 5 which includes 100).
+ * Map a roll value (1-100) to a plausibility band (1-5).
  *
- * @param roll - Roll value between 0 and 100 inclusive
+ * @param roll - Roll value between 1 and 100 inclusive
  * @returns The corresponding plausibility band 1-5
  * @throws Error if roll is outside valid range
  */
 export function mapRollToBand(roll: number): PlausibilityBand {
-  if (roll < 0 || roll > 100) {
-    throw new Error(`Roll must be between 0 and 100, got ${roll}`);
+  if (roll < 1 || roll > 100) {
+    throw new Error(`Roll must be between 1 and 100, got ${roll}`);
   }
 
   for (const boundary of BAND_BOUNDARIES) {
@@ -68,11 +68,11 @@ export function mapRollToBand(roll: number): PlausibilityBand {
 /**
  * Generate a random dice roll and map it to a band.
  *
- * @returns DiceRollResult with raw roll (0-100) and mapped band (1-5)
+ * @returns DiceRollResult with raw roll (1-100) and mapped band (1-5)
  */
 export function rollDice(): DiceRollResult {
-  // Generate random integer 0-100 inclusive
-  const roll = Math.floor(Math.random() * 101);
+  // Generate random integer 1-100 inclusive
+  const roll = Math.floor(Math.random() * 100) + 1;
   const band = mapRollToBand(roll);
 
   return { roll, band };
