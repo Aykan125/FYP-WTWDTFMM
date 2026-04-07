@@ -12,72 +12,72 @@ import { HeadlineBands } from '../../src/llm/jurorPrompt';
 
 describe('Dice Roll Functions', () => {
   describe('mapRollToBand', () => {
-    // Weighted boundaries: 3:5:8:3:1 ratio
-    // Band 1: 0-14 (15%), Band 2: 15-39 (25%), Band 3: 40-79 (40%), Band 4: 80-94 (15%), Band 5: 95-100 (5%)
+    // Target distribution: 10/35/40/12/3
+    // Band 1: 0-9 (10%), Band 2: 10-44 (35%), Band 3: 45-84 (40%), Band 4: 85-96 (12%), Band 5: 97-100 (4%)
 
-    describe('Band 1 (inevitable): 0-14', () => {
+    describe('Band 1 (inevitable): 0-9', () => {
       it('should map 0 to band 1', () => {
         expect(mapRollToBand(0)).toBe(1);
       });
 
-      it('should map 7 to band 1', () => {
-        expect(mapRollToBand(7)).toBe(1);
+      it('should map 5 to band 1', () => {
+        expect(mapRollToBand(5)).toBe(1);
       });
 
-      it('should map 14 to band 1', () => {
-        expect(mapRollToBand(14)).toBe(1);
+      it('should map 9 to band 1', () => {
+        expect(mapRollToBand(9)).toBe(1);
       });
     });
 
-    describe('Band 2 (probable): 15-39', () => {
-      it('should map 15 to band 2', () => {
-        expect(mapRollToBand(15)).toBe(2);
+    describe('Band 2 (probable): 10-44', () => {
+      it('should map 10 to band 2', () => {
+        expect(mapRollToBand(10)).toBe(2);
       });
 
       it('should map 27 to band 2', () => {
         expect(mapRollToBand(27)).toBe(2);
       });
 
-      it('should map 39 to band 2', () => {
-        expect(mapRollToBand(39)).toBe(2);
+      it('should map 44 to band 2', () => {
+        expect(mapRollToBand(44)).toBe(2);
       });
     });
 
-    describe('Band 3 (plausible): 40-79', () => {
-      it('should map 40 to band 3', () => {
-        expect(mapRollToBand(40)).toBe(3);
+    describe('Band 3 (plausible): 45-84', () => {
+      it('should map 45 to band 3', () => {
+        expect(mapRollToBand(45)).toBe(3);
       });
 
-      it('should map 60 to band 3', () => {
-        expect(mapRollToBand(60)).toBe(3);
+      it('should map 65 to band 3', () => {
+        expect(mapRollToBand(65)).toBe(3);
       });
 
-      it('should map 79 to band 3', () => {
-        expect(mapRollToBand(79)).toBe(3);
-      });
-    });
-
-    describe('Band 4 (possible): 80-94', () => {
-      it('should map 80 to band 4', () => {
-        expect(mapRollToBand(80)).toBe(4);
-      });
-
-      it('should map 87 to band 4', () => {
-        expect(mapRollToBand(87)).toBe(4);
-      });
-
-      it('should map 94 to band 4', () => {
-        expect(mapRollToBand(94)).toBe(4);
+      it('should map 84 to band 3', () => {
+        expect(mapRollToBand(84)).toBe(3);
       });
     });
 
-    describe('Band 5 (preposterous): 95-100', () => {
-      it('should map 95 to band 5', () => {
-        expect(mapRollToBand(95)).toBe(5);
+    describe('Band 4 (possible): 85-96', () => {
+      it('should map 85 to band 4', () => {
+        expect(mapRollToBand(85)).toBe(4);
       });
 
+      it('should map 90 to band 4', () => {
+        expect(mapRollToBand(90)).toBe(4);
+      });
+
+      it('should map 96 to band 4', () => {
+        expect(mapRollToBand(96)).toBe(4);
+      });
+    });
+
+    describe('Band 5 (preposterous): 97-100', () => {
       it('should map 97 to band 5', () => {
         expect(mapRollToBand(97)).toBe(5);
+      });
+
+      it('should map 99 to band 5', () => {
+        expect(mapRollToBand(99)).toBe(5);
       });
 
       it('should map 100 to band 5', () => {
@@ -87,16 +87,16 @@ describe('Dice Roll Functions', () => {
 
     describe('Boundary conditions', () => {
       it('should correctly map all boundary values', () => {
-        // Band boundaries: 0-14, 15-39, 40-79, 80-94, 95-100
+        // Band boundaries: 0-9, 10-44, 45-84, 85-96, 97-100
         expect(mapRollToBand(0)).toBe(1);
-        expect(mapRollToBand(14)).toBe(1);
-        expect(mapRollToBand(15)).toBe(2);
-        expect(mapRollToBand(39)).toBe(2);
-        expect(mapRollToBand(40)).toBe(3);
-        expect(mapRollToBand(79)).toBe(3);
-        expect(mapRollToBand(80)).toBe(4);
-        expect(mapRollToBand(94)).toBe(4);
-        expect(mapRollToBand(95)).toBe(5);
+        expect(mapRollToBand(9)).toBe(1);
+        expect(mapRollToBand(10)).toBe(2);
+        expect(mapRollToBand(44)).toBe(2);
+        expect(mapRollToBand(45)).toBe(3);
+        expect(mapRollToBand(84)).toBe(3);
+        expect(mapRollToBand(85)).toBe(4);
+        expect(mapRollToBand(96)).toBe(4);
+        expect(mapRollToBand(97)).toBe(5);
         expect(mapRollToBand(100)).toBe(5);
       });
     });

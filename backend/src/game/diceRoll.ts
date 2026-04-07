@@ -17,26 +17,25 @@ export interface DiceRollResult {
 }
 
 // ============================================================================
-// Band Boundaries (weighted: 3:5:8:3:1 ratio)
+// Band Boundaries
 // ============================================================================
 
 /**
  * Band boundaries for mapping roll to band.
- * Weighted to favor middle bands (plausible most common, preposterous rare).
+ * Target distribution: 10% / 35% / 40% / 12% / 3%
  *
- * Ratios: 3:5:8:3:1 = 20 parts total
- * Band 1: 3/20 = 15% → 0-14   (15 values) - inevitable
- * Band 2: 5/20 = 25% → 15-39  (25 values) - probable
- * Band 3: 8/20 = 40% → 40-79  (40 values) - plausible
- * Band 4: 3/20 = 15% → 80-94  (15 values) - possible
- * Band 5: 1/20 = 5%  → 95-100 (6 values)  - preposterous
+ * Band 1: 0-9    (10 values, 9.9%)  - inevitable
+ * Band 2: 10-44  (35 values, 34.7%) - probable
+ * Band 3: 45-84  (40 values, 39.6%) - plausible
+ * Band 4: 85-96  (12 values, 11.9%) - possible
+ * Band 5: 97-100 (4 values,  4.0%)  - preposterous
  */
 const BAND_BOUNDARIES: { min: number; max: number; band: PlausibilityBand }[] = [
-  { min: 0, max: 14, band: 1 },
-  { min: 15, max: 39, band: 2 },
-  { min: 40, max: 79, band: 3 },
-  { min: 80, max: 94, band: 4 },
-  { min: 95, max: 100, band: 5 },
+  { min: 0, max: 9, band: 1 },
+  { min: 10, max: 44, band: 2 },
+  { min: 45, max: 84, band: 3 },
+  { min: 85, max: 96, band: 4 },
+  { min: 97, max: 100, band: 5 },
 ];
 
 // ============================================================================
