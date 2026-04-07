@@ -291,7 +291,7 @@ These five headlines must represent different realizations of the same core stor
 - how surprising the development is
 
 Important headline rules:
-- Write in concise newspaper-headline style
+- Write in newspaper-headline style. If necessary use a second sentence for clarity.
 - Keep them vivid, specific, and readable
 - They should feel like plausible headlines from the relevant future date
 - Do not make all five headlines simple paraphrases
