@@ -16,7 +16,14 @@ export function InGameDate({ inGameNow }: InGameDateProps) {
   return (
     <Card padding="sm">
       <SectionTitle>Current Date</SectionTitle>
-      <span className="text-sm font-medium text-gray-700">{formatted}</span>
+      <div style={{ containerType: 'inline-size' }}>
+        <div
+          className="font-bold text-gray-800 leading-tight tracking-tight whitespace-nowrap text-center"
+          style={{ fontSize: 'clamp(1rem, 13cqw, 3rem)' }}
+        >
+          {formatted}
+        </div>
+      </div>
     </Card>
   );
 }
