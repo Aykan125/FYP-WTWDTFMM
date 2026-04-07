@@ -9,19 +9,45 @@ interface HeadlineFeedProps {
 
 export function HeadlineFeed({ headlines, currentPlayerId }: HeadlineFeedProps) {
   const feedRef = useRef<HTMLDivElement>(null);
-  const userScrolledRef = useRef(false);
+  // Whether the feed should stick to the bottom on new headlines.
+  // Starts true; flips to false when the user manually scrolls up.
+  const followBottomRef = useRef(true);
+  // True while we're performing a programmatic scroll, so the scroll
+  // event handler can ignore it.
+  const programmaticScrollRef = useRef(false);
+  const [showJumpButton, setShowJumpButton] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  // Snap to bottom on new headlines (only if user hasn't scrolled away).
   useEffect(() => {
-    if (feedRef.current && !userScrolledRef.current) {
-      feedRef.current.scrollTop = feedRef.current.scrollHeight;
-    }
+    if (!feedRef.current || !followBottomRef.current) return;
+    programmaticScrollRef.current = true;
+    feedRef.current.scrollTop = feedRef.current.scrollHeight;
+    // Release the flag on the next frame, after the scroll event has fired.
+    requestAnimationFrame(() => {
+      programmaticScrollRef.current = false;
+    });
   }, [headlines.length]);
 
   const handleScroll = () => {
     if (!feedRef.current) return;
+    if (programmaticScrollRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = feedRef.current;
-    userScrolledRef.current = scrollHeight - scrollTop - clientHeight > 50;
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+    const atBottom = distanceFromBottom < 50;
+    followBottomRef.current = atBottom;
+    setShowJumpButton(!atBottom);
+  };
+
+  const jumpToLatest = () => {
+    if (!feedRef.current) return;
+    programmaticScrollRef.current = true;
+    feedRef.current.scrollTop = feedRef.current.scrollHeight;
+    followBottomRef.current = true;
+    setShowJumpButton(false);
+    requestAnimationFrame(() => {
+      programmaticScrollRef.current = false;
+    });
   };
 
   const handleCopy = async () => {
@@ -155,12 +181,12 @@ export function HeadlineFeed({ headlines, currentPlayerId }: HeadlineFeedProps) 
                 &ldquo;{headline.text}&rdquo;
               </p>
               {hasScore && (
-                <div className="hidden group-hover:flex items-center gap-2 mt-1.5 pt-1.5 border-t border-gray-100/60 text-[10px]">
+                <div className="absolute right-2 bottom-2 hidden group-hover:flex items-center gap-2 px-2 py-1 rounded-md bg-white/95 shadow-sm border border-gray-200 text-[10px] z-10 pointer-events-none">
                   <span className="text-gray-400">+{headline.baselineScore}</span>
                   <span className="text-indigo-500">+{headline.plausibilityScore} plaus</span>
                   <span className="text-emerald-500">+{headline.connectionScore} conn</span>
                   <span className="text-violet-500">+{headline.planetBonusScore} planet</span>
-                  <span className="ml-auto font-semibold text-gray-600">= {headline.totalScore} pts</span>
+                  <span className="font-semibold text-gray-600 ml-1">= {headline.totalScore}</span>
                 </div>
               )}
             </div>
@@ -168,14 +194,9 @@ export function HeadlineFeed({ headlines, currentPlayerId }: HeadlineFeedProps) 
         })}
       </div>
 
-      {userScrolledRef.current && (
+      {showJumpButton && (
         <button
-          onClick={() => {
-            if (feedRef.current) {
-              feedRef.current.scrollTop = feedRef.current.scrollHeight;
-              userScrolledRef.current = false;
-            }
-          }}
+          onClick={jumpToLatest}
           className="mt-2 text-center text-xs text-indigo-500 hover:text-indigo-700 py-1 transition-colors"
         >
           Scroll to latest
