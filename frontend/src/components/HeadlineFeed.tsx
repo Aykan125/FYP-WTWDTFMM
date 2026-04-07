@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Headline } from '../hooks/useSocket';
 import { Card, SectionTitle } from './ui';
 
@@ -10,6 +10,7 @@ interface HeadlineFeedProps {
 export function HeadlineFeed({ headlines, currentPlayerId }: HeadlineFeedProps) {
   const feedRef = useRef<HTMLDivElement>(null);
   const userScrolledRef = useRef(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (feedRef.current && !userScrolledRef.current) {
@@ -21,6 +22,27 @@ export function HeadlineFeed({ headlines, currentPlayerId }: HeadlineFeedProps) 
     if (!feedRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = feedRef.current;
     userScrolledRef.current = scrollHeight - scrollTop - clientHeight > 50;
+  };
+
+  const handleCopy = async () => {
+    const formatted = headlines
+      .map((h) => {
+        const date = h.inGameSubmittedAt
+          ? new Date(h.inGameSubmittedAt).toLocaleDateString('en-US', {
+              month: 'long',
+              year: 'numeric',
+            })
+          : '';
+        return `[${date}] ${h.playerNickname} — ${h.text}`;
+      })
+      .join('\n');
+    try {
+      await navigator.clipboard.writeText(formatted);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
   };
 
   const displayedHeadlines = headlines;
@@ -47,7 +69,36 @@ export function HeadlineFeed({ headlines, currentPlayerId }: HeadlineFeedProps) 
 
   return (
     <Card className="flex flex-col h-full min-h-0">
-      <SectionTitle count={displayedHeadlines.length}>Timeline</SectionTitle>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+          Timeline
+        </h3>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleCopy}
+            disabled={displayedHeadlines.length === 0}
+            className="text-[10px] text-gray-400 hover:text-indigo-500 disabled:opacity-30 disabled:hover:text-gray-400 transition-colors flex items-center gap-1"
+            title="Copy timeline (dates, authors, headlines)"
+          >
+            {copied ? (
+              <>
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+                Copied
+              </>
+            ) : (
+              <>
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                Copy
+              </>
+            )}
+          </button>
+          <span className="text-xs text-gray-400">{displayedHeadlines.length}</span>
+        </div>
+      </div>
 
       <div
         ref={feedRef}
