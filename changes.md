@@ -1,3 +1,19 @@
+# Deployment note: Ubuntu box uses PM2 to run the backend
+
+**Not a code change** — operational note for future reference.
+
+The Ubuntu deployment box runs the backend under [PM2](https://pm2.keymetrics.io/), a Node.js process manager that keeps the app alive across crashes and detaches it from the terminal session. This means:
+
+- After `git pull` on the Ubuntu box, run `pm2 restart all` to pick up the new code (NOT `npm run dev`, which will fail with `EADDRINUSE :::3001` because PM2 is still holding the port).
+- `pm2 list` shows all managed processes.
+- `pm2 logs` tails the live output.
+- If you ever want to bypass PM2 for local debugging on the box, `pm2 stop all` first.
+- `pm2 startup` + `pm2 save` makes PM2 itself survive a reboot.
+
+The Mac dev environment does NOT use PM2 — local development uses `npm run dev` directly with `tsx watch` for hot reload.
+
+---
+
 # Final game-end summary uses fictional experience reports
 
 ## What changed
