@@ -11,9 +11,22 @@ import { generateRoundSummary, generateFinalNarrativeSummary } from './summarySe
 import { getPlayerScoreBreakdowns } from './scoringService.js';
 import { SEED_HEADLINES } from './seedHeadlines.js';
 
+/**
+ * Test mode: when GAME_TEST_MODE=true, all time-based durations
+ * (tutorial, breaks, rounds, cooldown) are scaled by 1/16 so the
+ * full game flow can be exercised in ~3 minutes instead of ~46.
+ * Does NOT affect production behaviour — flag must be explicitly set.
+ */
+const TEST_MODE = process.env.GAME_TEST_MODE === 'true';
+const TIME_SCALE = TEST_MODE ? 1 / 16 : 1;
+
+if (TEST_MODE) {
+  console.log('[GameLoop] ⚡ GAME_TEST_MODE active — all durations scaled by 1/16');
+}
+
 const ROUND_SPEED_WEIGHTS = [2, 4, 6, 8];
 const TOTAL_INGAME_MS = 20 * 365.25 * 24 * 60 * 60 * 1000;
-const TUTORIAL_DURATION_MS = 3 * 60 * 1000; // 3 minutes
+const TUTORIAL_DURATION_MS = Math.round(3 * 60 * 1000 * TIME_SCALE); // 3 min normally, ~11s in test mode
 
 /**
  * Per-break configuration indexed by round number just completed.
@@ -30,9 +43,9 @@ interface BreakConfig {
 }
 
 const BREAK_SCHEDULE: BreakConfig[] = [
-  { durationMin: 3, generateSummary: false, summaryFromRound: null },  // After R1
-  { durationMin: 5, generateSummary: true, summaryFromRound: 1 },      // After R2: covers R1-R2
-  { durationMin: 3, generateSummary: false, summaryFromRound: null },  // After R3
+  { durationMin: 3 * TIME_SCALE, generateSummary: false, summaryFromRound: null },  // After R1
+  { durationMin: 5 * TIME_SCALE, generateSummary: true, summaryFromRound: 1 },      // After R2: covers R1-R2
+  { durationMin: 3 * TIME_SCALE, generateSummary: false, summaryFromRound: null },  // After R3
 ];
 
 /** Exported for testing */
@@ -195,8 +208,12 @@ class GameLoopInstance {
       if (!inGameStartAt) {
         inGameStartAt = now;
       }
-      this.state.timelineSpeedRatio = computeRoundSpeedRatio(roundNo, this.state.playMinutes);
-      phaseEndsAt = new Date(now.getTime() + this.state.playMinutes * 60 * 1000);
+      // In test mode, scale the round duration AND the speed ratio by the same
+      // factor so the in-game timeline still spans the full 20 years across
+      // the compressed real-time round.
+      const effectivePlayMinutes = this.state.playMinutes * TIME_SCALE;
+      this.state.timelineSpeedRatio = computeRoundSpeedRatio(roundNo, effectivePlayMinutes);
+      phaseEndsAt = new Date(now.getTime() + effectivePlayMinutes * 60 * 1000);
     } else if (toPhase === 'BREAK') {
       this.state.timelineSpeedRatio = 0;
       const breakCfg = getBreakConfig(roundNo);
