@@ -15,7 +15,11 @@ import { getRoundSummary, getSessionIdFromJoinCode } from '../game/summaryServic
 // Rate limiting: track last submission time per player
 // Key: `${sessionId}:${playerId}`, Value: timestamp in ms
 const lastHeadlineSubmission: Map<string, number> = new Map();
-const HEADLINE_COOLDOWN_MS = 90_000; // 1.5 minutes
+
+// In test mode (GAME_TEST_MODE=true), the cooldown is scaled to ~6s
+// to match the compressed game timing in gameLoop.ts.
+const TEST_MODE = process.env.GAME_TEST_MODE === 'true';
+const HEADLINE_COOLDOWN_MS = TEST_MODE ? Math.round(90_000 / 16) : 90_000; // ~6s test, 90s normal
 
 /**
  * Count unique other authors from STRONG linked headlines using DB lookup.
