@@ -145,7 +145,7 @@ export function HeadlineFeed({ headlines, currentPlayerId }: HeadlineFeedProps) 
                   {isArchive && <span className="ml-1 text-amber-400">(history)</span>}
                   {!isArchive && isOwn && <span className="ml-1 text-gray-400">(you)</span>}
                 </span>
-                <span className="text-[11px] text-gray-300">
+                <span className="text-[11px] font-semibold text-gray-600">
                   R{headline.roundNo} &middot; {headline.inGameSubmittedAt
                     ? new Date(headline.inGameSubmittedAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
                     : ''}
