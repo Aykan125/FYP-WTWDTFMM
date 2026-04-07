@@ -13,7 +13,7 @@ export const DEFAULT_PLANETS: PlanetEntry[] = [
   {
     id: 'EARTH',
     description:
-      'Nature, environment, climate, agriculture, ecology, sustainability, and natural resources. Headlines about AI impact on the natural world.',
+      'Nature, environment, climate, humanity, justice, agriculture, and natural resources. Headlines about AI impact on the natural world and humane/just outcomes for people.',
   },
   {
     id: 'MARS',
