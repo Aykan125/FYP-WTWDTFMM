@@ -1,3 +1,31 @@
+# Game-end PDF rendered with jsPDF native text (not rasterised DOM)
+
+## What changed
+
+**Files:** `frontend/src/components/GameEnd.tsx`
+
+The "Download PDF" button on the game-end page builds the PDF with **jsPDF's native text rendering** (`pdf.text()` + `splitTextToSize()` for word wrap, with a manual `ensureSpace()` page-break helper). The leaderboard chart is the only element captured as an image (via `html2canvas`) because it's a visual.
+
+The first implementation used `html2canvas` to rasterise the entire page wrapper into one giant image and let `jspdf` slice it into A4 pages. That had two visible bugs:
+
+1. **Text was sliced through page breaks.** The slicer cut at fixed pixel heights with no awareness of where lines or paragraphs started/ended, so words and lines were horizontally bisected at the page boundary.
+2. **The headline list was truncated to ~5 entries.** The on-screen `HeadlineFeed` lives in a 400px `overflow-y-auto` scroll container. `html2canvas` only captures what's visible inside the scrollbox, so headlines below the fold were never in the PDF.
+
+The new approach iterates the headline array directly from React props (no scroll viewport involved) and emits each headline as real PDF text. The page-break helper checks remaining vertical space before each line, so a paragraph that would overflow simply continues on the next page at the next line — never mid-line.
+
+## Trade-offs considered
+
+1. **Increase the on-screen `HeadlineFeed` container to its full content height before capture, then snapshot everything as one image.** Would fix the truncation bug but not the page-slicing bug. Also flickers visibly while the layout grows.
+2. **Use `jsPDF.html()` instead of `html2canvas` + manual paging.** It supports text but renders via a different (and more fragile) path; we'd still need to special-case Tailwind colors and the chart, and it has known issues with flexbox layouts. Rejected as more risk for similar effort.
+3. **Server-side Puppeteer rendering.** Would give a perfect render but requires a new authenticated backend endpoint, a Puppeteer install on the deployment box, and pushes a one-off feature into the server. Rejected — disproportionate to a "save your game as a keepsake" feature.
+4. **Hybrid (chosen): native text for everything except the bar chart, captured as a small image.** Selectable, searchable, no truncation, no slicing, fast (the captured image is ~50kb instead of multi-megabyte), and the implementation is ~80 lines of straightforward jsPDF calls.
+
+## Justified rationale
+
+The headline list and the experience reports are the parts of the PDF players will actually read, and they're pure text. Rasterising text is the wrong tool for that — it produces an image masquerading as a document. Native PDF text gives a real document, fixes both bugs as a side effect, and the bar chart is still a faithful image of what's on screen because it's the one thing that needs to be a graphic.
+
+---
+
 # Deployment note: Ubuntu box uses PM2 to run the backend
 
 **Not a code change** — operational note for future reference.
