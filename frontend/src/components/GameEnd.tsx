@@ -35,11 +35,11 @@ export function GameEnd({
     finalSummary?.status === 'completed' && finalSummary.summary;
   const reports = hasSummary ? finalSummary.summary?.reports ?? [] : [];
 
-  const pdfRef = useRef<HTMLDivElement>(null);
+  const leaderboardRef = useRef<HTMLDivElement>(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
 
   const handleDownloadPdf = async () => {
-    if (!pdfRef.current) return;
+    if (!leaderboardRef.current) return;
     setGeneratingPdf(true);
     try {
       const [html2canvas, jsPDF] = await Promise.all([
@@ -47,28 +47,147 @@ export function GameEnd({
         import('jspdf').then((m) => m.jsPDF),
       ]);
 
-      const canvas = await html2canvas(pdfRef.current, {
+      // Build the PDF programmatically with jsPDF native text rendering.
+      // The leaderboard chart is captured as an image (it's a visual);
+      // everything else is real text so it stays selectable, doesn't get
+      // sliced through page breaks, and isn't bound to a scroll viewport.
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const margin = 15;
+      const pageWidth = 210;
+      const pageHeight = 297;
+      const contentWidth = pageWidth - margin * 2;
+      const bottomLimit = pageHeight - margin;
+      let y = margin;
+
+      const ptToMm = 0.3528;
+
+      const ensureSpace = (needed: number) => {
+        if (y + needed > bottomLimit) {
+          pdf.addPage();
+          y = margin;
+        }
+      };
+
+      const writeText = (
+        text: string,
+        fontSize: number,
+        opts?: {
+          bold?: boolean;
+          italic?: boolean;
+          color?: [number, number, number];
+          gapAfter?: number;
+        }
+      ) => {
+        pdf.setFontSize(fontSize);
+        pdf.setFont(
+          'helvetica',
+          opts?.bold ? 'bold' : opts?.italic ? 'italic' : 'normal'
+        );
+        const c = opts?.color ?? [33, 37, 41];
+        pdf.setTextColor(c[0], c[1], c[2]);
+
+        const lineHeight = fontSize * ptToMm * 1.35;
+        const baselineOffset = fontSize * ptToMm * 0.85;
+        const lines: string[] = pdf.splitTextToSize(text, contentWidth);
+
+        for (const line of lines) {
+          ensureSpace(lineHeight);
+          pdf.text(line, margin, y + baselineOffset);
+          y += lineHeight;
+        }
+        if (opts?.gapAfter) y += opts.gapAfter;
+      };
+
+      // Header
+      writeText('Future Headlines', 22, { bold: true, gapAfter: 1 });
+      writeText(
+        `Session ${joinCode} · ${maxRounds} rounds · 20 years of history`,
+        10,
+        { color: [120, 120, 120], gapAfter: 6 }
+      );
+
+      // Leaderboard
+      writeText('Final Leaderboard', 14, {
+        bold: true,
+        color: [60, 60, 60],
+        gapAfter: 2,
+      });
+
+      const canvas = await html2canvas(leaderboardRef.current, {
         scale: 2,
         backgroundColor: '#ffffff',
         useCORS: true,
       });
-
-      const imgWidth = 210; // A4 width in mm
-      const pageHeight = 297; // A4 height in mm
+      const imgWidth = contentWidth;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const imgData = canvas.toDataURL('image/png');
+      ensureSpace(imgHeight);
+      pdf.addImage(
+        canvas.toDataURL('image/png'),
+        'PNG',
+        margin,
+        y,
+        imgWidth,
+        imgHeight
+      );
+      y += imgHeight + 8;
 
-      let heightLeft = imgHeight;
-      let position = 0;
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+      // Timeline — iterate ALL headlines from props, not the scroll viewport
+      writeText('Timeline', 14, {
+        bold: true,
+        color: [60, 60, 60],
+        gapAfter: 3,
+      });
 
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
+      for (const h of realHeadlines) {
+        const dateStr = h.inGameSubmittedAt
+          ? new Date(h.inGameSubmittedAt).toLocaleDateString('en-US', {
+              month: 'long',
+              year: 'numeric',
+            })
+          : '';
+        // Keep the meta line and at least one line of headline together
+        ensureSpace(12);
+        writeText(`${h.playerNickname}  ·  R${h.roundNo}  ·  ${dateStr}`, 8, {
+          color: [120, 120, 120],
+        });
+        writeText(h.text, 10, { gapAfter: 3 });
+      }
+
+      // Experience reports
+      if (hasSummary && reports.length > 0) {
+        y += 4;
+        writeText('Experience Reports From These Years', 14, {
+          bold: true,
+          color: [60, 60, 60],
+          gapAfter: 2,
+        });
+        writeText(
+          'Three fictional characters who lived through your timeline.',
+          9,
+          { color: [120, 120, 120], gapAfter: 5 }
+        );
+
+        for (let i = 0; i < reports.length; i++) {
+          const r = reports[i];
+          // Don't strand a character header at the bottom of a page
+          ensureSpace(35);
+          writeText(r.character.name, 12, { bold: true });
+          writeText(r.character.role, 9, {
+            italic: true,
+            color: [100, 100, 100],
+          });
+          writeText(r.character.era, 8, {
+            color: [140, 140, 140],
+            gapAfter: 3,
+          });
+          writeText(r.story, 10, { gapAfter: 3 });
+          if (r.themes_touched.length > 0) {
+            writeText(`Themes: ${r.themes_touched.join(', ')}`, 8, {
+              color: [120, 120, 120],
+            });
+          }
+          if (i < reports.length - 1) y += 6;
+        }
       }
 
       const date = new Date().toISOString().slice(0, 10);
@@ -83,7 +202,7 @@ export function GameEnd({
   return (
     <main className="flex-1 min-h-0 overflow-y-auto">
       <div className="max-w-4xl mx-auto px-4 py-8">
-        <div ref={pdfRef} className="space-y-6">
+        <div className="space-y-6">
           {/* Header */}
           <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-800">Game Complete</h1>
@@ -95,13 +214,15 @@ export function GameEnd({
           {/* Leaderboard */}
           <Card padding="md">
             <SectionTitle>Final Leaderboard</SectionTitle>
-            <ScoreBarChart
-              players={realPlayers}
-              currentPlayerId={currentPlayerId}
-              totalGameMins={totalGameMins}
-              currentGameMins={currentGameMins}
-              phase="BREAK"
-            />
+            <div ref={leaderboardRef}>
+              <ScoreBarChart
+                players={realPlayers}
+                currentPlayerId={currentPlayerId}
+                totalGameMins={totalGameMins}
+                currentGameMins={currentGameMins}
+                phase="BREAK"
+              />
+            </div>
           </Card>
 
           {/* Headlines list (replaces the old Game Statistics card) */}
@@ -182,7 +303,7 @@ export function GameEnd({
           </Card>
         </div>
 
-        {/* Buttons (NOT inside pdfRef, so they don't appear in the PDF) */}
+        {/* Buttons */}
         <div className="flex justify-center gap-3 pb-8 pt-6">
           <Button
             variant="primary"
