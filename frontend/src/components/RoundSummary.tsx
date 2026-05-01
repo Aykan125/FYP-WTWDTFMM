@@ -7,7 +7,7 @@ interface RoundSummaryProps {
 }
 
 export function RoundSummary({ summary, roundNo }: RoundSummaryProps) {
-  // Generating state
+  // generating state
   if (summary.status === 'generating') {
     return (
       <Card padding="sm">
@@ -25,7 +25,7 @@ export function RoundSummary({ summary, roundNo }: RoundSummaryProps) {
     );
   }
 
-  // Error state
+  // error state
   if (summary.status === 'error') {
     return (
       <Card padding="sm">
@@ -36,7 +36,7 @@ export function RoundSummary({ summary, roundNo }: RoundSummaryProps) {
     );
   }
 
-  // Pending
+  // pending
   if (summary.status === 'pending' || !summary.summary) {
     return (
       <Card padding="sm">
@@ -52,19 +52,16 @@ export function RoundSummary({ summary, roundNo }: RoundSummaryProps) {
     <Card padding="sm" className="h-full">
       <SectionTitle>Period {roundNo} Summary</SectionTitle>
       <div className="max-h-[calc(100dvh-12rem)] overflow-y-auto space-y-3 pr-0.5">
-        {/* Header stats */}
         <div className="flex gap-2 text-xs text-gray-400">
           <span>{roundStats.headlineCount} developments</span>
           <span>&middot;</span>
           <span>{roundStats.playerCount} sources</span>
         </div>
 
-        {/* Narrative */}
         <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">
           {narrative}
         </p>
 
-        {/* Themes */}
         {themes.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {themes.map((theme, i) => (
@@ -73,7 +70,6 @@ export function RoundSummary({ summary, roundNo }: RoundSummaryProps) {
           </div>
         )}
 
-        {/* Highlighted Headlines */}
         {highlightedHeadlines.length > 0 && (
           <div className="space-y-2">
             <span className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Key Developments</span>

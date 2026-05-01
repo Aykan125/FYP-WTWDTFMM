@@ -11,8 +11,8 @@ interface UsePhaseTimerReturn {
 }
 
 /**
- * Hook to manage a countdown timer for game phases
- * Syncs with server time and counts down locally
+ * countdown timer for game phases.
+ * syncs with server time and counts down locally.
  */
 export function usePhaseTimer({
   phaseEndsAt,
@@ -22,7 +22,6 @@ export function usePhaseTimer({
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    // Clear any existing interval
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
@@ -33,29 +32,27 @@ export function usePhaseTimer({
       return;
     }
 
-    // Calculate initial remaining time from server timestamps
+    // initial remaining time from server timestamps
     const endsAt = new Date(phaseEndsAt).getTime();
     const now = new Date(serverNow).getTime();
     const initialRemaining = Math.max(0, endsAt - now);
 
     setRemainingMs(initialRemaining);
 
-    // Store when we started the timer
     const startTime = Date.now();
     const startRemaining = initialRemaining;
 
-    // Update every second
+    // tick every 100ms for smooth countdown, stop at zero
     intervalRef.current = setInterval(() => {
       const elapsed = Date.now() - startTime;
       const newRemaining = Math.max(0, startRemaining - elapsed);
       setRemainingMs(newRemaining);
 
-      // Stop when we hit zero
       if (newRemaining <= 0 && intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
-    }, 100); // Update every 100ms for smooth countdown
+    }, 100);
 
     return () => {
       if (intervalRef.current) {
@@ -64,7 +61,6 @@ export function usePhaseTimer({
     };
   }, [phaseEndsAt, serverNow]);
 
-  // Format remaining time as MM:SS
   const remainingFormatted = formatTime(remainingMs);
 
   return { remainingMs, remainingFormatted };

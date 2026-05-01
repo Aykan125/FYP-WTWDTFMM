@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-Experiment: Test a tweaked juror prompt against the original.
+experiment: test a tweaked juror prompt against the original.
 
-Pulls 40 story directions from the playtest database along with the
-original AI-generated bands. Runs the tweaked prompt against the same
+pulls 40 story directions from the playtest database along with the
+original ai-generated bands. runs the tweaked prompt against the same
 story directions and saves side-by-side comparisons so we can compare
 the voice/tone/density of the rewrites.
 
-Usage: python3 run.py
+usage: python3 run.py
 """
 
 import json
@@ -22,7 +22,7 @@ SESSION_ID = "64cd0a5b-3af6-413f-8ce2-8c3cd6cb31cd"
 MODEL = "gpt-5.2"
 SAMPLE_SIZE = 40
 
-# Load DATABASE_URL from env or backend/.env
+# load database_url from env or backend/.env
 CONN = os.environ.get("DATABASE_URL")
 if not CONN:
     env_file = Path(__file__).resolve().parents[2] / "backend" / ".env"
@@ -35,7 +35,7 @@ if not CONN:
     print("ERROR: DATABASE_URL not found in env or backend/.env", file=sys.stderr)
     sys.exit(1)
 
-# ---- Load API key ----
+# load api key
 API_KEY = os.environ.get("OPENAI_API_KEY")
 if not API_KEY:
     env_file = Path(__file__).resolve().parents[2] / "backend" / ".env"
@@ -48,7 +48,7 @@ if not API_KEY:
     print("ERROR: OPENAI_API_KEY not found", file=sys.stderr)
     sys.exit(1)
 
-# ---- Fetch story directions from DB ----
+# fetch story directions from db
 print("Fetching story directions from database...")
 result = subprocess.run(
     [
@@ -83,7 +83,7 @@ result = subprocess.run(
 sample = json.loads(result.stdout.strip())
 print(f"  Loaded {len(sample)} story directions")
 
-# ---- Fetch full timeline (archive + all headlines) as context ----
+# fetch full timeline (archive + all headlines) as context
 print("Fetching timeline context...")
 result = subprocess.run(
     [
@@ -104,7 +104,7 @@ result = subprocess.run(
 full_timeline = json.loads(result.stdout.strip())
 print(f"  Loaded {len(full_timeline)} timeline headlines")
 
-# ---- Planet list (same as game) ----
+# planet list (same as game)
 PLANET_LIST = [
     {"id": "EARTH", "description": "Nature, environment, climate, agriculture, ecology, sustainability, and natural resources"},
     {"id": "MARS", "description": "War, conflict, military, defense, security, weapons, and geopolitical tensions"},
@@ -117,7 +117,7 @@ PLANET_LIST = [
     {"id": "PLUTO", "description": "Transformation, death and rebirth, hidden forces, secrets, and fundamental change"},
 ]
 
-# ---- JSON Schema (simplified to just headlines, we don't need the full eval) ----
+# json schema (simplified to just headlines, we don't need the full eval)
 SCHEMA = {
     "name": "headline_rewrite",
     "strict": True,
@@ -135,7 +135,7 @@ SCHEMA = {
     },
 }
 
-# ---- Tweaked prompt builder ----
+# tweaked prompt builder
 def build_tweaked_prompt(story_direction, timeline_subset):
     formatted_headlines = "\n".join(
         f"- [{h['id'][:8]}] [{h['date']}] {h['text']}" for h in timeline_subset
@@ -157,21 +157,29 @@ def build_tweaked_prompt(story_direction, timeline_subset):
 === YOUR TASK ===
 Generate five newspaper-style headline variations inspired by the provided story_direction, one for each plausibility level (P1 inevitable through P5 preposterous).
 
-These five headlines must represent different realizations of the same core story direction, becoming progressively more surprising from P1 to P5.
-
-IMPORTANT — light-touch rewriting:
-- Stay close to the player's original wording, voice, and level of detail. You are *lightly polishing* their idea, not rewriting it.
+VOICE — preserve the player's tone:
+- Keep the player's core phrasing, vocabulary, and level of detail where it fits naturally.
 - Do not add specifics (numbers, named institutions, demographic subgroups, monetary figures) that the player didn't imply.
-- Keep them readable and plain — avoid overly dense or information-packed constructions.
-- Preserve the player's core phrasing where it works; only diverge more for P4 and P5.
-- Write in concise newspaper-headline style, but simple rather than elaborate.
-- Do not make all five headlines simple paraphrases — they should differ in scale, pace, or drama, not in vocabulary showmanship.
-- Avoid quotation marks unless they add real value.
-- Do not include explanatory text inside the headline strings.
+- Write simply, not in dense journalistic style. Avoid information-packed constructions.
+- Use plain everyday words over elaborate ones when both would work.
+
+ESCALATION — the 5 bands must clearly differ in drama and stakes:
+- P1 (inevitable): a modest, restrained version of the player's idea — the mildest realistic form
+- P2 (probable): the player's idea happening at normal scale, roughly as stated
+- P3 (plausible): the player's idea with some additional complication, reaction, or surprise
+- P4 (possible): a bolder, more dramatic realization that stretches the player's idea
+- P5 (preposterous): an extreme, destabilising version that still connects to the player's idea
+- Each band must meaningfully differ from the others in scale, stakes, or drama — NOT just by adding a clause to the same base sentence
+- Do not make all five headlines near-identical variants of the same sentence. If all 5 could be paraphrases of each other, the escalation is too weak.
+
+Other rules:
+- Write in concise newspaper-headline style
+- Avoid quotation marks unless they add real value
+- Do not include explanatory text inside the headline strings
 
 Output valid JSON with keys: band1, band2, band3, band4, band5."""
 
-# ---- Call API ----
+# call api
 def call_api(prompt):
     req = urllib.request.Request(
         "https://api.openai.com/v1/responses",
@@ -195,14 +203,14 @@ def call_api(prompt):
                     return json.loads(content.get("text"))
     return None
 
-# ---- Run experiment ----
+# run experiment
 print(f"\nRunning tweaked prompt on {len(sample)} story directions...")
 results = []
 for i, s in enumerate(sample):
     story = s["story_direction"]
     print(f"  [{i+1}/{len(sample)}] {s['player']}: \"{story[:60]}{'...' if len(story) > 60 else ''}\"")
 
-    # Get timeline up to this headline's id so the model sees the same context
+    # take timeline up to this headline's id so the model sees the same context
     headline_index = next(
         (idx for idx, h in enumerate(full_timeline) if h["id"].startswith(s["id"][:8])),
         len(full_timeline),
@@ -234,22 +242,29 @@ for i, s in enumerate(sample):
         "tweaked_band5": tweaked["band5"] if tweaked else None,
     })
 
-# ---- Save results ----
-output_file = Path(__file__).parent / "comparison.md"
+# save results
+output_file = Path(__file__).parent / "comparison-v2.md"
 with open(output_file, "w") as f:
-    f.write(f"# Prompt Tweak Experiment: Light-Touch Rewriting\n\n")
+    f.write(f"# Prompt Tweak Experiment V2: Voice + Escalation\n\n")
     f.write(f"**Session:** {SESSION_ID}  \n")
     f.write(f"**Model:** {MODEL}  \n")
     f.write(f"**Sample size:** {len(results)}  \n\n")
     f.write("## Tweaked Prompt Additions\n\n")
     f.write("```\n")
-    f.write("""IMPORTANT — light-touch rewriting:
-- Stay close to the player's original wording, voice, and level of detail. You are *lightly polishing* their idea, not rewriting it.
+    f.write("""VOICE — preserve the player's tone:
+- Keep the player's core phrasing, vocabulary, and level of detail where it fits naturally.
 - Do not add specifics (numbers, named institutions, demographic subgroups, monetary figures) that the player didn't imply.
-- Keep them readable and plain — avoid overly dense or information-packed constructions.
-- Preserve the player's core phrasing where it works; only diverge more for P4 and P5.
-- Write in concise newspaper-headline style, but simple rather than elaborate.
-- Do not make all five headlines simple paraphrases — they should differ in scale, pace, or drama, not in vocabulary showmanship.
+- Write simply, not in dense journalistic style. Avoid information-packed constructions.
+- Use plain everyday words over elaborate ones when both would work.
+
+ESCALATION — the 5 bands must clearly differ in drama and stakes:
+- P1 (inevitable): a modest, restrained version of the player's idea — the mildest realistic form
+- P2 (probable): the player's idea happening at normal scale, roughly as stated
+- P3 (plausible): the player's idea with some additional complication, reaction, or surprise
+- P4 (possible): a bolder, more dramatic realization that stretches the player's idea
+- P5 (preposterous): an extreme, destabilising version that still connects to the player's idea
+- Each band must meaningfully differ from the others in scale, stakes, or drama — NOT just by adding a clause to the same base sentence
+- Do not make all five headlines near-identical variants of the same sentence
 """)
     f.write("```\n\n")
     f.write("---\n\n")
@@ -268,8 +283,8 @@ with open(output_file, "w") as f:
             f.write(f"| P{b}{marker} | {orig} | {twk} |\n")
         f.write("\n---\n\n")
 
-# Save raw JSON too
-json_file = Path(__file__).parent / "results.json"
+# save raw json too
+json_file = Path(__file__).parent / "results-v2.json"
 json_file.write_text(json.dumps(results, indent=2))
 
 print(f"\nSaved results to:")

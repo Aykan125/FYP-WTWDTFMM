@@ -1,25 +1,21 @@
 /**
- * OpenAI Responses API client wrapper.
- * Uses fetch (injectable for testing) to call the Responses API with JSON schema enforcement.
+ * openai responses api client wrapper.
+ * uses fetch (injectable for testing) to call the responses api with json schema enforcement.
  */
 
-// ============================================================================
-// Types
-// ============================================================================
-
 /**
- * Configuration for the OpenAI client.
+ * configuration for the openai client.
  */
 export interface OpenAIClientConfig {
   apiKey: string;
   model?: string;
   baseUrl?: string;
-  /** Inject a custom fetch for testing */
+  /** inject a custom fetch for testing */
   fetchFn?: typeof fetch;
 }
 
 /**
- * JSON Schema object for response_format.
+ * json schema object for response_format.
  */
 export interface JsonSchemaDefinition {
   name: string;
@@ -28,37 +24,33 @@ export interface JsonSchemaDefinition {
 }
 
 /**
- * Request options for a Responses API call.
+ * request options for a responses api call.
  */
 export interface ResponsesApiRequest {
-  /** The input prompt/messages */
+  /** the input prompt/messages */
   input: string;
-  /** JSON schema to enforce on the output */
+  /** json schema to enforce on the output */
   jsonSchema?: JsonSchemaDefinition;
-  /** Optional instructions (system message) */
+  /** optional instructions (system message) */
   instructions?: string;
 }
 
 /**
- * Parsed result from the Responses API.
+ * parsed result from the responses api.
  */
 export interface ResponsesApiResult<T> {
-  /** The parsed JSON output */
+  /** the parsed json output */
   output: T;
-  /** Raw text before parsing (for debugging) */
+  /** raw text before parsing (for debugging) */
   rawText: string;
-  /** Model used */
+  /** model used */
   model: string;
-  /** Usage stats */
+  /** usage stats */
   usage?: {
     inputTokens: number;
     outputTokens: number;
   };
 }
-
-// ============================================================================
-// Error Classes
-// ============================================================================
 
 export class OpenAIError extends Error {
   constructor(
@@ -71,15 +63,11 @@ export class OpenAIError extends Error {
   }
 }
 
-// ============================================================================
-// Client Implementation
-// ============================================================================
-
 const DEFAULT_MODEL = 'gpt-5.2';
 const DEFAULT_BASE_URL = 'https://api.openai.com';
 
 /**
- * Create an OpenAI Responses API client.
+ * create an openai responses api client.
  */
 export function createOpenAIClient(config: OpenAIClientConfig) {
   const {
@@ -94,25 +82,22 @@ export function createOpenAIClient(config: OpenAIClientConfig) {
   }
 
   /**
-   * Call the Responses API and return parsed JSON.
+   * call the responses api and return parsed json.
    */
   async function callResponsesApi<T>(
     request: ResponsesApiRequest
   ): Promise<ResponsesApiResult<T>> {
     const url = `${baseUrl}/v1/responses`;
 
-    // Build request body
     const body: Record<string, unknown> = {
       model,
       input: request.input,
     };
 
-    // Add instructions if provided
     if (request.instructions) {
       body.instructions = request.instructions;
     }
 
-    // Add JSON schema format if provided
     if (request.jsonSchema) {
       body.text = {
         format: {
@@ -151,7 +136,7 @@ export function createOpenAIClient(config: OpenAIClientConfig) {
           errorMessage = errorBody.error.message;
         }
       } catch {
-        // Ignore JSON parse errors for error response
+        // ignore json parse errors for error response
       }
       throw new OpenAIError(errorMessage, 'API_ERROR', response.status);
     }
@@ -166,8 +151,8 @@ export function createOpenAIClient(config: OpenAIClientConfig) {
       );
     }
 
-    // Extract the output text from the Responses API structure
-    // The Responses API returns: { output: [{ type: "message", content: [{ type: "output_text", text: "..." }] }] }
+    // extract the output text from the responses api structure.
+    // the responses api returns: { output: [{ type: "message", content: [{ type: "output_text", text: "..." }] }] }
     let rawText: string;
     try {
       const outputItems = responseData.output;
@@ -175,7 +160,6 @@ export function createOpenAIClient(config: OpenAIClientConfig) {
         throw new Error('No output items');
       }
 
-      // Find the message output
       const messageOutput = outputItems.find(
         (item: any) => item.type === 'message'
       );
@@ -183,7 +167,6 @@ export function createOpenAIClient(config: OpenAIClientConfig) {
         throw new Error('No message output found');
       }
 
-      // Find the text content
       const textContent = messageOutput.content?.find(
         (c: any) => c.type === 'output_text'
       );
@@ -199,7 +182,7 @@ export function createOpenAIClient(config: OpenAIClientConfig) {
       );
     }
 
-    // Parse the text as JSON
+    // parse the text as json
     let parsedOutput: T;
     try {
       parsedOutput = JSON.parse(rawText);
@@ -210,7 +193,7 @@ export function createOpenAIClient(config: OpenAIClientConfig) {
       );
     }
 
-    // Extract usage if available
+    // extract usage if available
     let usage: { inputTokens: number; outputTokens: number } | undefined;
     if (responseData.usage) {
       usage = {
@@ -233,7 +216,7 @@ export function createOpenAIClient(config: OpenAIClientConfig) {
 }
 
 /**
- * Type for the client returned by createOpenAIClient.
+ * type for the client returned by createOpenAIClient.
  */
 export type OpenAIClient = ReturnType<typeof createOpenAIClient>;
 

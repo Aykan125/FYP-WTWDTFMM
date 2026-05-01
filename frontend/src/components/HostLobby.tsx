@@ -70,13 +70,11 @@ export function HostLobby({
 
   const lobbyContent = (
     <>
-      {/* Title */}
       <div className="text-center space-y-1">
         <h1 className="text-3xl font-bold text-gray-900">Game Lobby</h1>
         <p className="text-sm text-gray-500">Share the invite link with players</p>
       </div>
 
-      {/* Invite link card */}
       <Card padding="lg" className="text-center space-y-3">
         <p className="text-xs text-gray-400 uppercase tracking-wider">Game Code</p>
         <span className="text-4xl font-mono font-bold text-indigo-600 tracking-widest block">
@@ -89,7 +87,6 @@ export function HostLobby({
         </div>
       </Card>
 
-      {/* Start button */}
       <Button
         fullWidth
         size="lg"
@@ -99,7 +96,6 @@ export function HostLobby({
         {players.length < 2 ? 'Need 2+ players to start' : 'Start Game'}
       </Button>
 
-      {/* Instructions */}
       <p className="text-xs text-center text-gray-400">
         Share the invite link so other players can join.
       </p>

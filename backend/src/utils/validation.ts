@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-// Nickname validation schema
+// nickname validation schema
 export const nicknameSchema = z
   .string()
   .min(3, 'Nickname must be at least 3 characters')
@@ -11,13 +11,13 @@ export const nicknameSchema = z
   )
   .transform((val) => val.trim());
 
-// Join code validation schema
+// join code validation schema
 export const joinCodeSchema = z
   .string()
   .length(6, 'Join code must be exactly 6 characters')
   .regex(/^[A-Z0-9]+$/, 'Join code must contain only uppercase letters and numbers');
 
-// Request body schemas
+// request body schemas
 export const createSessionSchema = z.object({
   hostNickname: nicknameSchema,
 });
@@ -26,7 +26,7 @@ export const joinSessionSchema = z.object({
   nickname: nicknameSchema,
 });
 
-// Headline validation schema
+// headline validation schema
 export const headlineSchema = z
   .string()
   .min(1, 'Headline cannot be empty')

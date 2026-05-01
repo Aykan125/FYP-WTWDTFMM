@@ -1,7 +1,7 @@
 /**
- * Scoring service for headline evaluation.
- * This module handles database operations for scoring and provides
- * the main API for LLM/heuristic integration.
+ * scoring service for headline evaluation.
+ * this module handles database operations for scoring and provides
+ * the main api for llm/heuristic integration.
  */
 
 import pool from '../db/pool.js';
@@ -21,24 +21,20 @@ import {
 } from './planetWeighting.js';
 import { computeHeadlineScore } from './scoring.js';
 
-// ============================================================================
-// Types
-// ============================================================================
-
 /**
- * Raw player row from database.
- * Note: planet_usage_state can be in legacy LRU format or new tally format.
+ * raw player row from database.
+ * note: planet_usage_state can be in legacy lru format or new tally format.
  */
 interface PlayerRow {
   id: string;
   session_id: string;
   nickname: string;
   total_score: number;
-  planet_usage_state: unknown;  // Can be legacy or new format, use migratePlanetState
+  planet_usage_state: unknown;  // can be legacy or new format, use migratePlanetState
 }
 
 /**
- * Raw headline row from database.
+ * raw headline row from database.
  */
 interface HeadlineRow {
   id: string;
@@ -47,10 +43,6 @@ interface HeadlineRow {
   round_no: number;
   total_headline_score: number | null;
 }
-
-// ============================================================================
-// Error Classes
-// ============================================================================
 
 export class ScoringError extends Error {
   constructor(
@@ -62,24 +54,20 @@ export class ScoringError extends Error {
   }
 }
 
-// ============================================================================
-// Main Service Function
-// ============================================================================
-
 /**
- * Apply an AI/LLM headline evaluation and update scores.
- * 
- * This function:
- * 1. Validates the headline exists and belongs to the player/session
- * 2. Loads the player's current score and planet usage state
- * 3. Computes the complete score breakdown (including planet bonus)
- * 4. Updates the headline with scoring details
- * 5. Updates the player's total score and planet usage state
- * 6. Returns the breakdown, new total, and full leaderboard
- * 
- * @param payload - Evaluation payload from AI/LLM
- * @param config - Scoring configuration (defaults to DEFAULT_SCORING_CONFIG)
- * @returns Score breakdown, new total, and leaderboard
+ * apply an ai/llm headline evaluation and update scores.
+ *
+ * this function:
+ * 1. validates the headline exists and belongs to the player/session
+ * 2. loads the player's current score and planet usage state
+ * 3. computes the complete score breakdown (including planet bonus)
+ * 4. updates the headline with scoring details
+ * 5. updates the player's total score and planet usage state
+ * 6. returns the breakdown, new total, and full leaderboard
+ *
+ * @param payload - evaluation payload from ai/llm
+ * @param config - scoring configuration (defaults to DEFAULT_SCORING_CONFIG)
+ * @returns score breakdown, new total, and leaderboard
  */
 export async function applyHeadlineEvaluation(
   payload: HeadlineEvaluationPayload,
@@ -101,7 +89,7 @@ export async function applyHeadlineEvaluation(
   try {
     await client.query('BEGIN');
 
-    // Step 1: Load and validate player
+    // load and validate player
     const playerResult = await client.query<PlayerRow>(
       `SELECT id, session_id, nickname, total_score, planet_usage_state
        FROM session_players
@@ -118,7 +106,7 @@ export async function applyHeadlineEvaluation(
 
     const player = playerResult.rows[0];
 
-    // Step 2: Load and validate headline
+    // load and validate headline
     const headlineResult = await client.query<HeadlineRow>(
       `SELECT id, session_id, player_id, round_no, total_headline_score
        FROM game_session_headlines
@@ -135,7 +123,7 @@ export async function applyHeadlineEvaluation(
 
     const headline = headlineResult.rows[0];
 
-    // Validate headline belongs to the correct session and player
+    // validate headline belongs to the correct session and player
     if (headline.session_id !== sessionId) {
       throw new ScoringError(
         `Headline ${headlineId} does not belong to session ${sessionId}`,
@@ -150,7 +138,6 @@ export async function applyHeadlineEvaluation(
       );
     }
 
-    // Check if headline was already scored
     if (headline.total_headline_score !== null) {
       throw new ScoringError(
         `Headline ${headlineId} has already been scored`,
@@ -158,13 +145,13 @@ export async function applyHeadlineEvaluation(
       );
     }
 
-    // Step 3: Migrate and initialize planet state (handles legacy LRU and new tally formats)
+    // migrate and initialize planet state (handles legacy lru and new tally formats)
     const planetState: PlanetTallyState = migratePlanetState(
       player.planet_usage_state,
       DEFAULT_PLANETS
     );
 
-    // Step 4: Calculate planet scoring and update state
+    // calculate planet scoring and update state
     const planetResult = applyPlanetScoringAndUsage(
       planetState,
       aiPlanetRankings,
@@ -172,8 +159,8 @@ export async function applyHeadlineEvaluation(
       config
     );
 
-    // Step 5: Calculate complete headline score
-    // Note: selectedBand (dice roll result) is used for plausibility scoring
+    // calculate complete headline score.
+    // selectedBand (dice roll result) is used for plausibility scoring
     const breakdown: HeadlineScoreBreakdown = computeHeadlineScore(
       {
         plausibilityLevel,
@@ -186,8 +173,8 @@ export async function applyHeadlineEvaluation(
       config
     );
 
-    // Step 6: Update headline with scoring breakdown
-    // Note: others_story_connection_level stores unique other author count
+    // update headline with scoring breakdown.
+    // others_story_connection_level stores unique other author count
     // and others_story_score stores the connection score for backwards compatibility
     const [planet1, planet2, planet3] = aiPlanetRankings.slice(0, 3);
 
@@ -224,7 +211,7 @@ export async function applyHeadlineEvaluation(
       ]
     );
 
-    // Step 7: Update player's total score and planet usage state
+    // update player's total score and planet usage state
     const newTotalScore = player.total_score + breakdown.total;
 
     await client.query(
@@ -235,7 +222,7 @@ export async function applyHeadlineEvaluation(
       [newTotalScore, JSON.stringify(planetResult.updatedState), playerId]
     );
 
-    // Step 8: Get updated leaderboard
+    // get updated leaderboard
     const leaderboardResult = await client.query<{
       id: string;
       nickname: string;
@@ -273,15 +260,11 @@ export async function applyHeadlineEvaluation(
   }
 }
 
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
 /**
- * Get the current leaderboard for a session.
- * 
- * @param sessionId - Session ID
- * @returns Array of player scores ordered by rank
+ * get the current leaderboard for a session.
+ *
+ * @param sessionId - session id
+ * @returns array of player scores ordered by rank
  */
 export async function getLeaderboard(
   sessionId: string
@@ -307,10 +290,10 @@ export async function getLeaderboard(
 }
 
 /**
- * Get scoring breakdown for a specific headline.
+ * get scoring breakdown for a specific headline.
  *
- * @param headlineId - Headline ID
- * @returns Score breakdown or null if not scored yet
+ * @param headlineId - headline id
+ * @returns score breakdown or null if not scored yet
  */
 export async function getHeadlineScoreBreakdown(
   headlineId: string
@@ -336,7 +319,7 @@ export async function getHeadlineScoreBreakdown(
 
   const row = result.rows[0];
 
-  // If not scored yet, return null
+  // if not scored yet, return null
   if (row.total_headline_score === null) {
     return null;
   }
@@ -346,19 +329,19 @@ export async function getHeadlineScoreBreakdown(
     baseline: row.baseline_score ?? 0,
     plausibility: row.plausibility_score ?? 0,
     connectionScore: row.others_story_score ?? 0,
-    selfStory: 0, // Deprecated, always 0
-    othersStory: 0, // Deprecated, always 0
+    selfStory: 0, // deprecated, always 0
+    othersStory: 0, // deprecated, always 0
     planetBonus: row.planet_bonus_score ?? 0,
     total: row.total_headline_score,
   };
 }
 
 /**
- * Get aggregated score breakdowns for all players in a session.
- * Sums each score component across all headlines per player.
+ * get aggregated score breakdowns for all players in a session.
+ * sums each score component across all headlines per player.
  *
- * @param sessionId - Session ID
- * @returns Map of playerId to score breakdown
+ * @param sessionId - session id
+ * @returns map of playerId to score breakdown
  */
 export async function getPlayerScoreBreakdowns(
   sessionId: string
@@ -390,11 +373,11 @@ export async function getPlayerScoreBreakdowns(
 }
 
 /**
- * Get player's current planet state.
- * Handles migration from legacy LRU format to new tally format.
+ * get player's current planet state.
+ * handles migration from legacy lru format to new tally format.
  *
- * @param playerId - Player ID
- * @returns Planet tally state (migrated if necessary)
+ * @param playerId - player id
+ * @returns planet tally state (migrated if necessary)
  */
 export async function getPlayerPlanetState(
   playerId: string
@@ -410,5 +393,3 @@ export async function getPlayerPlanetState(
 
   return migratePlanetState(result.rows[0].planet_usage_state, DEFAULT_PLANETS);
 }
-
-

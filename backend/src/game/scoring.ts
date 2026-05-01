@@ -1,6 +1,6 @@
 /**
- * Pure scoring functions for headline evaluation.
- * These functions have no side effects and don't access the database.
+ * pure scoring functions for headline evaluation.
+ * these functions have no side effects and don't access the database.
  */
 
 import {
@@ -12,35 +12,31 @@ import {
   StoryConnectionConfig,
 } from './scoringTypes.js';
 
-// ============================================================================
-// Individual Score Computations
-// ============================================================================
-
 /**
- * Compute baseline score (B) for submitting a headline.
- * Every headline gets this just for being submitted.
- * 
- * @param config - Scoring configuration
- * @returns Baseline score (B)
+ * compute baseline score (B) for submitting a headline.
+ * every headline gets this just for being submitted.
+ *
+ * @param config - scoring configuration
+ * @returns baseline score (B)
  */
 export function computeBaselineScore(config: ScoringConfig): number {
   return config.baselineB;
 }
 
 /**
- * Compute plausibility score based on AI-assessed level.
- * 
- * Scoring logic:
+ * compute plausibility score based on ai-assessed level.
+ *
+ * scoring logic:
  * - exactTarget (A1): level matches targetLevel (default: 3)
  * - nearTarget (A2): level is in nearLevels (default: 2 or 4)
  * - other: any other level (1 or 5)
- * 
- * The idea is that level 3 is the "sweet spot" - plausible but creative.
- * Levels 1 and 5 are either too implausible or too obvious.
- * 
- * @param level - AI-assessed plausibility level (1-5)
- * @param config - Scoring configuration
- * @returns Plausibility score (A1/A2/other)
+ *
+ * the idea is that level 3 is the "sweet spot" - plausible but creative.
+ * levels 1 and 5 are either too implausible or too obvious.
+ *
+ * @param level - ai-assessed plausibility level (1-5)
+ * @param config - scoring configuration
+ * @returns plausibility score (A1/A2/other)
  */
 export function computePlausibilityScore(
   level: PlausibilityLevel,
@@ -48,28 +44,28 @@ export function computePlausibilityScore(
 ): number {
   const { plausibilityPoints } = config;
 
-  // Check for exact target (A1)
+  // check for exact target (A1)
   if (level === plausibilityPoints.targetLevel) {
     return plausibilityPoints.exactTarget;
   }
 
-  // Check for near target (A2)
+  // check for near target (A2)
   if (plausibilityPoints.nearLevels.includes(level)) {
     return plausibilityPoints.nearTarget;
   }
 
-  // Other levels
+  // other levels
   return plausibilityPoints.other;
 }
 
 /**
- * Compute story connection score from a connection level.
- * Used for both self-story (X_L/M/H) and others-story (Y_L/M/H) connections.
+ * compute story connection score from a connection level.
+ * used for both self-story (X_L/M/H) and others-story (Y_L/M/H) connections.
  *
- * @deprecated Use computeConnectionScore instead for the simplified model.
- * @param level - Story connection level (LOW, MEDIUM, HIGH)
- * @param pointsTable - Table mapping levels to points
- * @returns Story connection score
+ * @deprecated use computeConnectionScore instead for the simplified model.
+ * @param level - story connection level (low, medium, high)
+ * @param pointsTable - table mapping levels to points
+ * @returns story connection score
  */
 export function computeStoryConnectionScore(
   level: StoryConnectionLevel,
@@ -79,17 +75,17 @@ export function computeStoryConnectionScore(
 }
 
 /**
- * Compute connection score based on unique other author count.
+ * compute connection score based on unique other author count.
  *
- * Scoring logic (default scale [0, 1, 4, 9]):
+ * scoring logic (default scale [0, 1, 4, 9]):
  * - 0 unique other authors → 0 pts
  * - 1 unique other author  → 1 pt
  * - 2 unique other authors → 4 pts
  * - 3 unique other authors → 9 pts
  *
- * @param uniqueOtherAuthors - Count of unique other authors from STRONG links (0-3)
- * @param config - Scoring configuration
- * @returns Connection score
+ * @param uniqueOtherAuthors - count of unique other authors from STRONG links (0-3)
+ * @param config - scoring configuration
+ * @returns connection score
  */
 export function computeConnectionScore(
   uniqueOtherAuthors: number,
@@ -99,31 +95,27 @@ export function computeConnectionScore(
   return config.connectionPoints.scale[idx] ?? 0;
 }
 
-// ============================================================================
-// Aggregate Score Computation
-// ============================================================================
-
 /**
- * Compute the complete score breakdown for a headline.
- * This is a pure function that takes all inputs and returns the breakdown.
+ * compute the complete score breakdown for a headline.
+ * this is a pure function that takes all inputs and returns the breakdown.
  *
- * Note: The planet bonus is computed separately via planetWeighting.ts
+ * note: the planet bonus is computed separately via planetWeighting.ts
  * and passed in here, because planet bonus depends on player-specific
- * LRU state which is handled elsewhere.
+ * lru state which is handled elsewhere.
  *
- * IMPORTANT: Plausibility scoring uses the AI's plausibilityLevel assessment,
- * which reflects how plausible the player's story direction is. The dice roll
+ * important: plausibility scoring uses the ai's plausibilityLevel assessment,
+ * which reflects how plausible the player's story direction is. the dice roll
  * (selectedBand) only determines which headline variant is displayed, not scoring.
  *
- * Connection scoring uses the simplified mutually exclusive model:
+ * connection scoring uses the simplified mutually exclusive model:
  * - OTHERS: +3 pts (connected to another player's headline)
  * - SELF: +1 pt (connected only to own headlines)
  * - NONE: 0 pts (no strong connections)
  *
- * @param input - AI/heuristic evaluation input
- * @param planetBonus - Pre-computed planet bonus (from applyPlanetScoringAndUsage)
- * @param config - Scoring configuration
- * @returns Complete score breakdown with total
+ * @param input - ai/heuristic evaluation input
+ * @param planetBonus - pre-computed planet bonus (from applyPlanetScoringAndUsage)
+ * @param config - scoring configuration
+ * @returns complete score breakdown with total
  */
 export function computeHeadlineScore(
   input: HeadlineScoringInput,
@@ -132,14 +124,14 @@ export function computeHeadlineScore(
 ): HeadlineScoreBreakdown {
   const baseline = computeBaselineScore(config);
 
-  // Use AI's plausibilityLevel assessment for scoring
-  // Level 3 = best (A1), Level 2/4 = good (A2), Level 1/5 = 0 points
+  // use ai's plausibilityLevel assessment for scoring.
+  // level 3 = best (A1), level 2/4 = good (A2), level 1/5 = 0 points
   const plausibility = computePlausibilityScore(
     input.plausibilityLevel,
     config
   );
 
-  // Connection scoring based on unique other author count
+  // connection scoring based on unique other author count
   const connectionScore = computeConnectionScore(input.uniqueOtherAuthors, config);
 
   const total = baseline + plausibility + connectionScore + planetBonus;
@@ -148,7 +140,7 @@ export function computeHeadlineScore(
     baseline,
     plausibility,
     connectionScore,
-    // Deprecated fields kept for backwards compatibility
+    // deprecated fields kept for backwards compatibility
     selfStory: 0,
     othersStory: 0,
     planetBonus,
@@ -157,11 +149,11 @@ export function computeHeadlineScore(
 }
 
 /**
- * Helper to get the label for a plausibility score (for display/debugging).
- * 
- * @param level - Plausibility level
- * @param config - Scoring configuration
- * @returns Label like "A1", "A2", or "other"
+ * helper to get the label for a plausibility score (for display/debugging).
+ *
+ * @param level - plausibility level
+ * @param config - scoring configuration
+ * @returns label like "A1", "A2", or "other"
  */
 export function getPlausibilityLabel(
   level: PlausibilityLevel,
@@ -177,11 +169,11 @@ export function getPlausibilityLabel(
 }
 
 /**
- * Helper to format story connection level as X_L/M/H or Y_L/M/H.
- * 
- * @param level - Story connection level
+ * helper to format story connection level as X_L/M/H or Y_L/M/H.
+ *
+ * @param level - story connection level
  * @param prefix - 'X' for self, 'Y' for others
- * @returns Label like "X_M" or "Y_H"
+ * @returns label like "X_M" or "Y_H"
  */
 export function getStoryConnectionLabel(
   level: StoryConnectionLevel,
@@ -190,5 +182,3 @@ export function getStoryConnectionLabel(
   const suffix = level === 'LOW' ? 'L' : level === 'MEDIUM' ? 'M' : 'H';
   return `${prefix}_${suffix}`;
 }
-
-

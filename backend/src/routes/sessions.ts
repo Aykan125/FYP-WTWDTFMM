@@ -12,28 +12,26 @@ const router = Router();
 
 /**
  * POST /api/sessions
- * Create a new game session with a host player
+ * create a new game session with a host player
  */
 router.post('/sessions', async (req: Request, res: Response): Promise<void> => {
   try {
-    // Validate request body
     const { hostNickname } = createSessionSchema.parse(req.body);
 
-    // Generate unique join code
     const joinCode = await generateUniqueJoinCode();
 
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
 
-      // Create session with game configuration
+      // create session with game configuration
       const sessionResult = await client.query(
         `INSERT INTO game_sessions (
-          join_code, 
-          status, 
-          play_minutes, 
-          break_minutes, 
-          max_rounds, 
+          join_code,
+          status,
+          play_minutes,
+          break_minutes,
+          max_rounds,
           timeline_speed_ratio
         )
          VALUES ($1, 'WAITING', $2, $3, $4, $5)
@@ -42,7 +40,6 @@ router.post('/sessions', async (req: Request, res: Response): Promise<void> => {
       );
       const session = sessionResult.rows[0];
 
-      // Create host player
       const playerResult = await client.query(
         `INSERT INTO session_players (session_id, nickname, is_host)
          VALUES ($1, $2, true)
@@ -51,7 +48,7 @@ router.post('/sessions', async (req: Request, res: Response): Promise<void> => {
       );
       const hostPlayer = playerResult.rows[0];
 
-      // Update session with host_player_id
+      // update session with host_player_id
       await client.query(
         `UPDATE game_sessions SET host_player_id = $1 WHERE id = $2`,
         [hostPlayer.id, session.id]
@@ -94,21 +91,19 @@ router.post('/sessions', async (req: Request, res: Response): Promise<void> => {
 
 /**
  * POST /api/sessions/:joinCode/join
- * Join an existing session as a player
+ * join an existing session as a player
  */
 router.post('/sessions/:joinCode/join', async (req: Request, res: Response): Promise<void> => {
   try {
-    // Validate join code from params
     const joinCode = joinCodeSchema.parse(req.params.joinCode.toUpperCase());
-    
-    // Validate request body
+
     const { nickname } = joinSessionSchema.parse(req.body);
 
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
 
-      // Check if session exists
+      // check if session exists
       const sessionResult = await client.query(
         `SELECT id, join_code, status FROM game_sessions WHERE join_code = $1`,
         [joinCode]
@@ -122,7 +117,7 @@ router.post('/sessions/:joinCode/join', async (req: Request, res: Response): Pro
 
       const session = sessionResult.rows[0];
 
-      // Check if session is in WAITING state
+      // check if session is in WAITING state
       if (session.status !== 'WAITING') {
         await client.query('ROLLBACK');
         res.status(400).json({
@@ -132,9 +127,9 @@ router.post('/sessions/:joinCode/join', async (req: Request, res: Response): Pro
         return;
       }
 
-      // Check if nickname is already taken in this session
+      // check if nickname is already taken in this session
       const nicknameCheck = await client.query(
-        `SELECT 1 FROM session_players 
+        `SELECT 1 FROM session_players
          WHERE session_id = $1 AND nickname = $2`,
         [session.id, nickname]
       );
@@ -148,7 +143,6 @@ router.post('/sessions/:joinCode/join', async (req: Request, res: Response): Pro
         return;
       }
 
-      // Create player
       const playerResult = await client.query(
         `INSERT INTO session_players (session_id, nickname, is_host)
          VALUES ($1, $2, false)
@@ -193,8 +187,8 @@ router.post('/sessions/:joinCode/join', async (req: Request, res: Response): Pro
 
 /**
  * POST /api/sessions/:joinCode/rejoin
- * Recover an existing player's identity by nickname, regardless of game phase.
- * Used when a player loses localStorage (new device/browser).
+ * recover an existing player's identity by nickname, regardless of game phase.
+ * used when a player loses localStorage (new device/browser).
  */
 router.post('/sessions/:joinCode/rejoin', async (req: Request, res: Response): Promise<void> => {
   try {
@@ -235,14 +229,13 @@ router.post('/sessions/:joinCode/rejoin', async (req: Request, res: Response): P
 
 /**
  * GET /api/sessions/:joinCode
- * Get session details including all players
+ * get session details including all players
  */
 router.get('/sessions/:joinCode', async (req: Request, res: Response): Promise<void> => {
   try {
-    // Validate and normalize join code
     const joinCode = joinCodeSchema.parse(req.params.joinCode.toUpperCase());
 
-    // Get session with players
+    // get session with players
     const result = await pool.query(
       `SELECT 
         s.id,
@@ -280,7 +273,7 @@ router.get('/sessions/:joinCode', async (req: Request, res: Response): Promise<v
       hostPlayerId: session.host_player_id,
       createdAt: session.created_at,
       updatedAt: session.updated_at,
-      players: session.players.filter((p: any) => p.id !== null), // Filter out null players from LEFT JOIN
+      players: session.players.filter((p: any) => p.id !== null), // filter out null players from left join
     });
   } catch (error) {
     if (error instanceof ZodError) {

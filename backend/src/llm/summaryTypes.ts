@@ -1,14 +1,10 @@
 /**
- * Types for round summary generation.
- * Defines the structure for AI-generated narrative summaries displayed during BREAK phase.
+ * types for round summary generation.
+ * defines the structure for ai-generated narrative summaries displayed during break phase.
  */
 
-// ============================================================================
-// Output Types (LLM Response)
-// ============================================================================
-
 /**
- * A highlighted headline from the round with context about its significance.
+ * a highlighted headline from the round with context about its significance.
  */
 export interface HighlightedHeadline {
   headline: string;
@@ -17,7 +13,7 @@ export interface HighlightedHeadline {
 }
 
 /**
- * Round statistics for context.
+ * round statistics for context.
  */
 export interface RoundStats {
   headlineCount: number;
@@ -25,27 +21,23 @@ export interface RoundStats {
 }
 
 /**
- * Full summary output structure from the LLM.
+ * full summary output structure from the llm.
  */
 export interface RoundSummaryOutput {
   /** 2-3 paragraph engaging narrative recap */
   narrative: string;
-  /** Top 3 themes from the round (max) */
+  /** top 3 themes from the round (max) */
   themes: string[];
-  /** Top 2 standout headlines with context */
+  /** top 2 standout headlines with context */
   highlightedHeadlines: HighlightedHeadline[];
-  /** Top 3 planets this round */
+  /** top 3 planets this round */
   dominantPlanets: string[];
-  /** Round statistics */
+  /** round statistics */
   roundStats: RoundStats;
 }
 
-// ============================================================================
-// Input Types (For prompt building)
-// ============================================================================
-
 /**
- * A single headline with metadata for the summary prompt.
+ * a single headline with metadata for the summary prompt.
  */
 export interface RoundHeadlineInput {
   headline: string;
@@ -57,8 +49,8 @@ export interface RoundHeadlineInput {
 }
 
 /**
- * Full input for building the summary prompt.
- * Can cover a single round (fromRound === toRound) or a range.
+ * full input for building the summary prompt.
+ * can cover a single round (fromRound === toRound) or a range.
  */
 export interface SummaryPromptInput {
   fromRound: number;
@@ -67,13 +59,9 @@ export interface SummaryPromptInput {
   headlines: RoundHeadlineInput[];
 }
 
-// ============================================================================
-// Service Types
-// ============================================================================
-
 /**
- * Parameters for generating a round summary.
- * Can cover a single round (fromRound === toRound) or a range (e.g. rounds 1-2).
+ * parameters for generating a round summary.
+ * can cover a single round (fromRound === toRound) or a range (e.g. rounds 1-2).
  */
 export interface GenerateSummaryParams {
   sessionId: string;
@@ -83,7 +71,7 @@ export interface GenerateSummaryParams {
 }
 
 /**
- * Result from summary generation.
+ * result from summary generation.
  */
 export interface SummaryResult {
   summary: RoundSummaryOutput;
@@ -95,16 +83,12 @@ export interface SummaryResult {
 }
 
 /**
- * Status of a round summary in the database.
+ * status of a round summary in the database.
  */
 export type SummaryStatus = 'pending' | 'generating' | 'completed' | 'error';
 
-// ============================================================================
-// Narrative (final game-end) Summary Types
-// ============================================================================
-
 /**
- * A single first-person experience report from a fictional character.
+ * a single first-person experience report from a fictional character.
  */
 export interface NarrativeReport {
   character: {
@@ -117,7 +101,7 @@ export interface NarrativeReport {
 }
 
 /**
- * Full output of the narrative final summary — multiple reports
+ * full output of the narrative final summary — multiple reports
  * illustrating different facets of the timeline.
  */
 export interface NarrativeSummaryOutput {
@@ -125,14 +109,14 @@ export interface NarrativeSummaryOutput {
 }
 
 /**
- * Input for the narrative prompt builder.
+ * input for the narrative prompt builder.
  */
 export interface NarrativePromptInput {
   headlines: Array<{ date: string; headline: string }>;
 }
 
 /**
- * Parameters for generating a final narrative summary.
+ * parameters for generating a final narrative summary.
  */
 export interface GenerateNarrativeParams {
   sessionId: string;
@@ -140,7 +124,7 @@ export interface GenerateNarrativeParams {
 }
 
 /**
- * Result from narrative summary generation.
+ * result from narrative summary generation.
  */
 export interface NarrativeResult {
   summary: NarrativeSummaryOutput;
@@ -152,7 +136,7 @@ export interface NarrativeResult {
 }
 
 /**
- * Database row for round_summaries table.
+ * database row for round_summaries table.
  */
 export interface RoundSummaryRow {
   id: string;

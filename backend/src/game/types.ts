@@ -1,11 +1,11 @@
 /**
- * Game phase types and interfaces for the Future Headlines game
+ * game phase types and interfaces for the future headlines game
  */
 
 export type GamePhase = 'WAITING' | 'TUTORIAL' | 'PLAYING' | 'BREAK' | 'FINISHED';
 
 /**
- * Configuration for a game session (from DB)
+ * configuration for a game session (from db)
  */
 export interface GameSessionConfig {
   sessionId: string;
@@ -17,7 +17,7 @@ export interface GameSessionConfig {
 }
 
 /**
- * Current runtime state of a game session
+ * current runtime state of a game session
  */
 export interface GameSessionRuntimeState extends GameSessionConfig {
   phase: GamePhase;
@@ -28,7 +28,7 @@ export interface GameSessionRuntimeState extends GameSessionConfig {
 }
 
 /**
- * Phase transition event data
+ * phase transition event data
  */
 export interface PhaseTransition {
   sessionId: string;
@@ -38,7 +38,7 @@ export interface PhaseTransition {
 }
 
 /**
- * Computed game state for broadcasting to clients
+ * computed game state for broadcasting to clients
  */
 export interface GameStateSnapshot {
   phase: GamePhase;
@@ -52,4 +52,3 @@ export interface GameStateSnapshot {
   inGameNow: string | null;
   timelineSpeedRatio: number;
 }
-

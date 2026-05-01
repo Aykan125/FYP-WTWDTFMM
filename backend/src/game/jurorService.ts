@@ -1,6 +1,6 @@
 /**
- * Juror service for evaluating headlines via OpenAI.
- * This module orchestrates the OpenAI call and validates the response.
+ * juror service for evaluating headlines via openai.
+ * this module orchestrates the openai call and validates the response.
  */
 
 import {
@@ -18,38 +18,30 @@ import {
   BAND_LABELS,
 } from '../llm/jurorPrompt.js';
 
-// ============================================================================
-// Types
-// ============================================================================
-
 export interface JurorEvaluationRequest extends JurorPromptInput {
-  // Inherits storyDirection, headlinesList, planetList
+  // inherits storyDirection, headlinesList, planetList
 }
 
 export interface JurorEvaluationResult {
-  /** The validated evaluation output */
+  /** the validated evaluation output */
   evaluation: JurorEvaluationOutput;
-  /** Model used for the evaluation */
+  /** model used for the evaluation */
   model: string;
-  /** Token usage */
+  /** token usage */
   usage?: {
     inputTokens: number;
     outputTokens: number;
   };
-  /** Raw request sent to LLM (for logging) */
+  /** raw request sent to llm (for logging) */
   rawRequest: {
     storyDirection: string;
     headlinesList: unknown[];
     planetList: unknown[];
     instructions: string;
   };
-  /** Raw response text from LLM (for logging) */
+  /** raw response text from llm (for logging) */
   rawResponse: string;
 }
-
-// ============================================================================
-// Error Classes
-// ============================================================================
 
 export class JurorValidationError extends Error {
   constructor(
@@ -62,15 +54,11 @@ export class JurorValidationError extends Error {
   }
 }
 
-// ============================================================================
-// Validation Functions
-// ============================================================================
-
 /**
- * Validate that the evaluation output meets all invariants.
+ * validate that the evaluation output meets all invariants.
  */
 function validateEvaluationOutput(output: JurorEvaluationOutput): void {
-  // 1. Validate LINKED has exactly 3 entries
+  // validate LINKED has exactly 3 entries
   if (!Array.isArray(output.LINKED) || output.LINKED.length !== 3) {
     throw new JurorValidationError(
       `LINKED must have exactly 3 entries, got ${output.LINKED?.length ?? 0}`,
@@ -79,7 +67,7 @@ function validateEvaluationOutput(output: JurorEvaluationOutput): void {
     );
   }
 
-  // 2. Validate PLANETS.top3 has exactly 3 entries
+  // validate PLANETS.top3 has exactly 3 entries
   if (!Array.isArray(output.PLANETS?.top3) || output.PLANETS.top3.length !== 3) {
     throw new JurorValidationError(
       `PLANETS.top3 must have exactly 3 entries, got ${output.PLANETS?.top3?.length ?? 0}`,
@@ -88,7 +76,7 @@ function validateEvaluationOutput(output: JurorEvaluationOutput): void {
     );
   }
 
-  // 3. Validate PLAUSIBILITY band matches label
+  // validate PLAUSIBILITY band matches label
   const plausibilityBand = output.PLAUSIBILITY?.band as PlausibilityBand;
   const expectedLabel = BAND_LABELS[plausibilityBand];
   if (output.PLAUSIBILITY?.label !== expectedLabel) {
@@ -103,7 +91,7 @@ function validateEvaluationOutput(output: JurorEvaluationOutput): void {
     );
   }
 
-  // 4. Validate planet ranks are 1, 2, 3
+  // validate planet ranks are 1, 2, 3
   const ranks = output.PLANETS.top3.map((p) => p.rank).sort();
   if (ranks[0] !== 1 || ranks[1] !== 2 || ranks[2] !== 3) {
     throw new JurorValidationError(
@@ -113,7 +101,7 @@ function validateEvaluationOutput(output: JurorEvaluationOutput): void {
     );
   }
 
-  // 5. Validate all bands have non-empty headlines
+  // validate all bands have non-empty headlines
   const bands = output.HEADLINES.bands;
   for (let i = 1; i <= 5; i++) {
     const key = `band${i}` as keyof typeof bands;
@@ -127,16 +115,12 @@ function validateEvaluationOutput(output: JurorEvaluationOutput): void {
   }
 }
 
-// ============================================================================
-// Service Implementation
-// ============================================================================
-
-/** Singleton client instance */
+/** singleton client instance */
 let clientInstance: OpenAIClient | null = null;
 
 /**
- * Get or create the OpenAI client.
- * Uses environment variables for configuration.
+ * get or create the openai client.
+ * uses environment variables for configuration.
  */
 function getClient(): OpenAIClient {
   if (!clientInstance) {
@@ -159,44 +143,41 @@ function getClient(): OpenAIClient {
 }
 
 /**
- * Reset the client instance (for testing).
+ * reset the client instance (for testing).
  */
 export function resetJurorClient(): void {
   clientInstance = null;
 }
 
 /**
- * Set a custom client instance (for testing).
+ * set a custom client instance (for testing).
  */
 export function setJurorClient(client: OpenAIClient): void {
   clientInstance = client;
 }
 
 /**
- * Evaluate a story direction using the OpenAI juror.
+ * evaluate a story direction using the openai juror.
  *
- * @param request - The evaluation request containing story direction, headlines, and planets
- * @returns The validated evaluation result
- * @throws {OpenAIError} If the API call fails
- * @throws {JurorValidationError} If the response fails invariant validation
+ * @param request - the evaluation request containing story direction, headlines, and planets
+ * @returns the validated evaluation result
+ * @throws {OpenAIError} if the api call fails
+ * @throws {JurorValidationError} if the response fails invariant validation
  */
 export async function evaluateJuror(
   request: JurorEvaluationRequest
 ): Promise<JurorEvaluationResult> {
   const client = getClient();
 
-  // Build the prompt
   const prompt = buildJurorPrompt(request);
   const instructions = buildJurorInstructions();
 
-  // Call the OpenAI API
   const result = await client.callResponsesApi<JurorEvaluationOutput>({
     input: prompt,
     instructions,
     jsonSchema: jurorJsonSchema,
   });
 
-  // Validate the output
   validateEvaluationOutput(result.output);
 
   return {
@@ -213,6 +194,5 @@ export async function evaluateJuror(
   };
 }
 
-// Re-export types for convenience
+// re-export types for convenience
 export type { JurorEvaluationOutput } from '../llm/jurorPrompt.js';
-

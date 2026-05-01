@@ -9,21 +9,19 @@ interface HeadlineFeedProps {
 
 export function HeadlineFeed({ headlines, currentPlayerId }: HeadlineFeedProps) {
   const feedRef = useRef<HTMLDivElement>(null);
-  // Whether the feed should stick to the bottom on new headlines.
-  // Starts true; flips to false when the user manually scrolls up.
+  // sticks to the bottom until the user manually scrolls up
   const followBottomRef = useRef(true);
-  // True while we're performing a programmatic scroll, so the scroll
-  // event handler can ignore it.
+  // true while a programmatic scroll is in flight, so the scroll handler ignores it
   const programmaticScrollRef = useRef(false);
   const [showJumpButton, setShowJumpButton] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // Snap to bottom on new headlines (only if user hasn't scrolled away).
+  // snap to bottom on new headlines, only when the user hasn't scrolled away
   useEffect(() => {
     if (!feedRef.current || !followBottomRef.current) return;
     programmaticScrollRef.current = true;
     feedRef.current.scrollTop = feedRef.current.scrollHeight;
-    // Release the flag on the next frame, after the scroll event has fired.
+    // release the flag on the next frame, after the scroll event has fired
     requestAnimationFrame(() => {
       programmaticScrollRef.current = false;
     });

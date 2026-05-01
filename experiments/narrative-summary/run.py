@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Experiment: Generate a narrative fictional story-style summary
+experiment: generate a narrative fictional story-style summary
 from the full 20-year timeline of an existing playtest session.
 
-Usage: python3 run.py
-Requires: OPENAI_API_KEY in environment or in backend/.env
+usage: python3 run.py
+requires: openai_api_key in environment or in backend/.env
 """
 
 import json
@@ -17,7 +17,7 @@ from pathlib import Path
 SESSION_ID = "64cd0a5b-3af6-413f-8ce2-8c3cd6cb31cd"
 MODEL = "gpt-5.2"
 
-# Load DATABASE_URL from env or backend/.env
+# load database_url from env or backend/.env
 CONN = os.environ.get("DATABASE_URL")
 if not CONN:
     env_file = Path(__file__).resolve().parents[2] / "backend" / ".env"
@@ -30,7 +30,7 @@ if not CONN:
     print("ERROR: DATABASE_URL not found in env or backend/.env", file=sys.stderr)
     sys.exit(1)
 
-# ---- Load API key ----
+# load api key
 API_KEY = os.environ.get("OPENAI_API_KEY")
 if not API_KEY:
     env_file = Path(__file__).resolve().parents[2] / "backend" / ".env"
@@ -43,7 +43,7 @@ if not API_KEY:
     print("ERROR: OPENAI_API_KEY not found", file=sys.stderr)
     sys.exit(1)
 
-# ---- Fetch timeline from DB ----
+# fetch timeline from db
 print("Fetching timeline from database...")
 result = subprocess.run(
     [
@@ -63,33 +63,34 @@ result = subprocess.run(
 timeline = json.loads(result.stdout.strip())
 print(f"  Loaded {len(timeline)} headlines")
 
-# ---- Build prompt ----
+# build prompt
 timeline_text = "\n".join(
     f"[{h['date']}] {h['headline']}" for h in timeline
 )
 
-SYSTEM_INSTRUCTIONS = """You are a literary fiction writer crafting a short story set against 20 years of real and imagined AI history. You are given a chronological list of news headlines spanning 2022 to 2046. Your task is NOT to summarise them, report them, or recap them — your task is to write a 600-800 word short story in the first person that feels authentic to this timeline.
+SYSTEM_INSTRUCTIONS = """You are a literary fiction writer crafting a set of short personal accounts set against 20 years of real and imagined AI history. You are given a chronological list of news headlines spanning 2022 to 2046. Your task is NOT to summarise them, report them, or recap them — your task is to write multiple short first-person "experience reports" that together illustrate different facets of what happened in this period.
 
-The story should:
+Each experience report should:
 - Be written in first person, past tense
-- Follow one fictional character (you invent them — name, job, era) living through this period
+- Follow ONE fictional character (invent them — name, job, era) living through a slice of this period
 - Reference specific events from the headlines as background or personal moments in their life
 - Show how AI reshaped their life, work, relationships, or beliefs
-- Have a beginning, middle, and end — a narrative arc, not a bullet list
 - Feel grounded and human, not grand or speeches-y
 - Avoid game language: never mention headlines, rounds, players, scores, planets, or submissions
 
-Your character should feel real. Show them noticing specific events, reacting to them, being changed by them. The headlines are their lived reality. Do not simply list events — make them part of a life being lived.
+Each report should be 500-1000 words. Together they should illuminate different facets of this era: different classes, professions, geographies, eras, emotional stakes, and angles. Do not repeat the same kind of character or viewpoint across reports.
+
+The characters should feel real. Show them noticing specific events, reacting to them, being changed by them. The headlines are their lived reality. Do not simply list events — make them part of lives being lived.
 
 Always output valid JSON matching the required schema."""
 
-USER_PROMPT = f"""Below is the timeline of events from 2022 to 2046 in this alternate history. Use it as the world your character lives in. Do not list or summarise the events — weave them into a first-person story.
+USER_PROMPT = f"""Below is the timeline of events from 2022 to 2046 in this alternate history. Use it as the world your characters live in. Do not list or summarise the events — weave them into first-person experience reports.
 
 === TIMELINE ===
 {timeline_text}
 
 === YOUR TASK ===
-Write a 600-800 word first-person short story. Pick a character and era that speaks to you from this timeline. Have them notice specific events as they happen to them personally. End with them reflecting on how the world changed them."""
+Write 3 first-person experience reports, each 500-1000 words, from different characters living through this period. Together they should illustrate multiple facets of what happened (e.g. different jobs, classes, countries, eras, emotional stakes — pick whatever contrasts feel most illuminating). Each character should notice specific events as they happen to them personally. End each report with a brief reflection on how the world changed them."""
 
 SCHEMA = {
     "name": "narrative_summary",
@@ -97,32 +98,43 @@ SCHEMA = {
     "schema": {
         "type": "object",
         "properties": {
-            "character": {
-                "type": "object",
-                "properties": {
-                    "name": {"type": "string"},
-                    "role": {"type": "string"},
-                    "era": {"type": "string"},
-                },
-                "required": ["name", "role", "era"],
-                "additionalProperties": False,
-            },
-            "story": {
-                "type": "string",
-                "description": "600-800 word first-person narrative story",
-            },
-            "themes_touched": {
+            "reports": {
                 "type": "array",
-                "items": {"type": "string"},
-                "description": "3-5 phrases naming what the story is really about",
+                "description": "Three first-person experience reports from different characters",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "character": {
+                            "type": "object",
+                            "properties": {
+                                "name": {"type": "string"},
+                                "role": {"type": "string"},
+                                "era": {"type": "string"},
+                            },
+                            "required": ["name", "role", "era"],
+                            "additionalProperties": False,
+                        },
+                        "story": {
+                            "type": "string",
+                            "description": "500-1000 word first-person experience report",
+                        },
+                        "themes_touched": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "3-5 phrases naming what this report is really about",
+                        },
+                    },
+                    "required": ["character", "story", "themes_touched"],
+                    "additionalProperties": False,
+                },
             },
         },
-        "required": ["character", "story", "themes_touched"],
+        "required": ["reports"],
         "additionalProperties": False,
     },
 }
 
-# ---- Call OpenAI Responses API ----
+# call openai responses api
 print(f"Calling OpenAI Responses API (model={MODEL})...")
 request_body = {
     "model": MODEL,
@@ -153,7 +165,7 @@ except urllib.error.HTTPError as e:
     print(f"HTTP Error {e.code}: {e.read().decode()}", file=sys.stderr)
     sys.exit(1)
 
-# Extract text output
+# extract text output
 output_text = None
 for item in result.get("output", []):
     if item.get("type") == "message":
@@ -168,83 +180,86 @@ if not output_text:
     sys.exit(1)
 
 parsed = json.loads(output_text)
+reports = parsed["reports"]
 
-# ---- Print + save ----
-print("\n" + "=" * 70)
-print("CHARACTER")
-print("=" * 70)
-print(f"Name: {parsed['character']['name']}")
-print(f"Role: {parsed['character']['role']}")
-print(f"Era:  {parsed['character']['era']}")
-print()
-print("=" * 70)
-print("STORY")
-print("=" * 70)
-print(parsed["story"])
-print()
-print("=" * 70)
-print("THEMES")
-print("=" * 70)
-for theme in parsed["themes_touched"]:
-    print(f"  - {theme}")
+# print + save
+for i, rep in enumerate(reports):
+    print("\n" + "=" * 70)
+    print(f"REPORT #{i + 1}")
+    print("=" * 70)
+    print(f"Name: {rep['character']['name']}")
+    print(f"Role: {rep['character']['role']}")
+    print(f"Era:  {rep['character']['era']}")
+    print()
+    print(rep["story"])
+    print()
+    print("Themes:")
+    for theme in rep["themes_touched"]:
+        print(f"  - {theme}")
 
-# Save output
-output_file = Path(__file__).parent / "output.md"
-output_file.write_text(
-    f"""# Narrative Summary Experiment
+# save output
+output_file = Path(__file__).parent / "output-v2.md"
+md_parts = [
+    f"# Narrative Summary Experiment V2: Multiple Experience Reports",
+    "",
+    f"**Session:** {SESSION_ID}  ",
+    f"**Model:** {MODEL}  ",
+    f"**Headlines:** {len(timeline)}  ",
+    f"**Reports:** {len(reports)}  ",
+    "",
+    "---",
+    "",
+]
+for i, rep in enumerate(reports):
+    md_parts.extend([
+        f"## Report #{i + 1}: {rep['character']['name']}",
+        "",
+        f"- **Role:** {rep['character']['role']}",
+        f"- **Era:** {rep['character']['era']}",
+        "",
+        "### Story",
+        "",
+        rep["story"],
+        "",
+        "### Themes Touched",
+        "",
+        *[f"- {t}" for t in rep["themes_touched"]],
+        "",
+        "---",
+        "",
+    ])
 
-**Session:** {SESSION_ID}
-**Model:** {MODEL}
-**Headlines:** {len(timeline)}
+md_parts.extend([
+    "## Prompt Used",
+    "",
+    "### System Instructions",
+    "",
+    "```",
+    SYSTEM_INSTRUCTIONS,
+    "```",
+    "",
+    "### User Prompt (timeline truncated)",
+    "",
+    "```",
+    "Below is the timeline of events from 2022 to 2046 in this alternate history.",
+    "Use it as the world your characters live in. Do not list or summarise the",
+    "events — weave them into first-person experience reports.",
+    "",
+    "=== TIMELINE ===",
+    *[f"[{h['date']}] {h['headline']}" for h in timeline[:10]],
+    f"... ({len(timeline) - 10} more headlines) ...",
+    "",
+    "=== YOUR TASK ===",
+    "Write 3 first-person experience reports, each 500-1000 words, from different",
+    "characters living through this period. Together they should illustrate",
+    "multiple facets of what happened.",
+    "```",
+    "",
+    "## Stats",
+    "",
+    f"- Input tokens: {result.get('usage', {}).get('input_tokens', 'N/A')}",
+    f"- Output tokens: {result.get('usage', {}).get('output_tokens', 'N/A')}",
+])
 
----
-
-## Character
-
-- **Name:** {parsed['character']['name']}
-- **Role:** {parsed['character']['role']}
-- **Era:** {parsed['character']['era']}
-
-## Story
-
-{parsed['story']}
-
-## Themes Touched
-
-{chr(10).join(f'- {t}' for t in parsed['themes_touched'])}
-
----
-
-## Prompt Used
-
-### System Instructions
-
-```
-{SYSTEM_INSTRUCTIONS}
-```
-
-### User Prompt (timeline truncated)
-
-```
-Below is the timeline of events from 2022 to 2046 in this alternate history.
-Use it as the world your character lives in. Do not list or summarise the
-events — weave them into a first-person story.
-
-=== TIMELINE ===
-{chr(10).join(f"[{h['date']}] {h['headline']}" for h in timeline[:10])}
-... ({len(timeline) - 10} more headlines) ...
-
-=== YOUR TASK ===
-Write a 600-800 word first-person short story. Pick a character and era
-that speaks to you from this timeline. Have them notice specific events
-as they happen to them personally. End with them reflecting on how the
-world changed them.
-```
-
-## Stats
-
-- Input tokens: {result.get('usage', {}).get('input_tokens', 'N/A')}
-- Output tokens: {result.get('usage', {}).get('output_tokens', 'N/A')}
-"""
-)
+output_file.write_text("\n".join(md_parts))
 print(f"\nSaved to {output_file}")

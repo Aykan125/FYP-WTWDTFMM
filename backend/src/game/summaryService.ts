@@ -1,6 +1,6 @@
 /**
- * Summary service for generating AI-powered round recaps.
- * Generates narrative summaries displayed during BREAK phase.
+ * summary service for generating ai-powered round recaps.
+ * generates narrative summaries displayed during break phase.
  */
 
 import pool from '../db/pool.js';
@@ -30,10 +30,6 @@ import {
   SummaryStatus,
 } from '../llm/summaryTypes.js';
 
-// ============================================================================
-// Plausibility Level Mapping
-// ============================================================================
-
 const PLAUSIBILITY_LABELS: Record<number, string> = {
   1: 'inevitable',
   2: 'probable',
@@ -42,16 +38,12 @@ const PLAUSIBILITY_LABELS: Record<number, string> = {
   5: 'preposterous',
 };
 
-// ============================================================================
-// Client Management
-// ============================================================================
-
-/** Singleton client instance */
+/** singleton client instance */
 let clientInstance: OpenAIClient | null = null;
 
 /**
- * Get or create the OpenAI client.
- * Uses environment variables for configuration.
+ * get or create the openai client.
+ * uses environment variables for configuration.
  */
 function getClient(): OpenAIClient {
   if (!clientInstance) {
@@ -74,25 +66,21 @@ function getClient(): OpenAIClient {
 }
 
 /**
- * Reset the client instance (for testing).
+ * reset the client instance (for testing).
  */
 export function resetSummaryClient(): void {
   clientInstance = null;
 }
 
 /**
- * Set a custom client instance (for testing).
+ * set a custom client instance (for testing).
  */
 export function setSummaryClient(client: OpenAIClient): void {
   clientInstance = client;
 }
 
-// ============================================================================
-// Database Operations
-// ============================================================================
-
 /**
- * Fetch all headlines for a range of rounds (inclusive).
+ * fetch all headlines for a range of rounds (inclusive).
  */
 async function fetchHeadlinesInRange(
   sessionId: string,
@@ -127,7 +115,7 @@ async function fetchHeadlinesInRange(
 }
 
 /**
- * Create or update a summary record with 'generating' status.
+ * create or update a summary record with 'generating' status.
  */
 async function markSummaryGenerating(
   sessionId: string,
@@ -146,7 +134,7 @@ async function markSummaryGenerating(
 }
 
 /**
- * Update a summary record with completed data.
+ * update a summary record with completed data.
  */
 async function markSummaryCompleted(
   summaryId: string,
@@ -181,7 +169,7 @@ async function markSummaryCompleted(
 }
 
 /**
- * Update a summary record with error status.
+ * update a summary record with error status.
  */
 async function markSummaryError(summaryId: string, errorMessage: string): Promise<void> {
   await pool.query(
@@ -194,30 +182,24 @@ async function markSummaryError(summaryId: string, errorMessage: string): Promis
   );
 }
 
-// ============================================================================
-// Service Implementation
-// ============================================================================
-
 /**
- * Generate a round summary using AI.
+ * generate a round summary using ai.
  *
- * @param params - Session ID, round number, and max rounds
- * @returns The generated summary with metadata
- * @throws {OpenAIError} If the API call fails
+ * @param params - session id, round number, and max rounds
+ * @returns the generated summary with metadata
+ * @throws {OpenAIError} if the api call fails
  */
 export async function generateRoundSummary(
   params: GenerateSummaryParams
 ): Promise<SummaryResult> {
   const { sessionId, fromRound, toRound, maxRounds } = params;
 
-  // Store the summary keyed by toRound (the most recent round in the range)
+  // store the summary keyed by toRound (the most recent round in the range)
   const summaryId = await markSummaryGenerating(sessionId, toRound);
 
   try {
-    // Fetch headlines for the full range
     const headlines = await fetchHeadlinesInRange(sessionId, fromRound, toRound);
 
-    // Build the prompt
     const prompt = buildSummaryPrompt({
       fromRound,
       toRound,
@@ -226,7 +208,6 @@ export async function generateRoundSummary(
     });
     const instructions = buildSummaryInstructions();
 
-    // Call OpenAI
     const client = getClient();
     const result = await client.callResponsesApi<RoundSummaryOutput>({
       input: prompt,
@@ -234,7 +215,6 @@ export async function generateRoundSummary(
       jsonSchema: summaryJsonSchema,
     });
 
-    // Mark as completed
     await markSummaryCompleted(
       summaryId,
       result.output,
@@ -251,7 +231,6 @@ export async function generateRoundSummary(
       usage: result.usage,
     };
   } catch (error) {
-    // Mark as error
     const errorMessage = error instanceof Error ? error.message : String(error);
     await markSummaryError(summaryId, errorMessage);
     throw error;
@@ -259,7 +238,7 @@ export async function generateRoundSummary(
 }
 
 /**
- * Fetch all headlines from a session in chronological order, formatted
+ * fetch all headlines from a session in chronological order, formatted
  * as `[YYYY-MM] headline` for the narrative prompt.
  */
 async function fetchAllHeadlinesForNarrative(
@@ -281,13 +260,13 @@ async function fetchAllHeadlinesForNarrative(
 }
 
 /**
- * Generate the final game-end narrative summary.
+ * generate the final game-end narrative summary.
  *
- * Unlike the historical recap used during BREAK, this generates a set
+ * unlike the historical recap used during break, this generates a set
  * of fictional first-person experience reports from different characters
  * living through the timeline.
  *
- * Stored in `round_summaries` with `summary_type = 'narrative'`, keyed
+ * stored in `round_summaries` with `summary_type = 'narrative'`, keyed
  * by `round_no = maxRounds`.
  */
 export async function generateFinalNarrativeSummary(
@@ -295,7 +274,7 @@ export async function generateFinalNarrativeSummary(
 ): Promise<NarrativeResult> {
   const { sessionId, maxRounds } = params;
 
-  // Store keyed by maxRounds with summary_type = 'narrative'
+  // store keyed by maxRounds with summary_type = 'narrative'
   const summaryId = await markSummaryGenerating(sessionId, maxRounds, 'narrative');
 
   try {
@@ -334,11 +313,11 @@ export async function generateFinalNarrativeSummary(
 }
 
 /**
- * Get an existing round summary from the database.
+ * get an existing round summary from the database.
  *
- * @param sessionId - The session ID
- * @param roundNo - The round number
- * @returns The summary data and status, or null if not found
+ * @param sessionId - the session id
+ * @param roundNo - the round number
+ * @returns the summary data and status, or null if not found
  */
 export async function getRoundSummary(
   sessionId: string,
@@ -370,10 +349,10 @@ export async function getRoundSummary(
 }
 
 /**
- * Get session ID from join code.
+ * get session id from join code.
  *
- * @param joinCode - The session join code
- * @returns The session ID or null if not found
+ * @param joinCode - the session join code
+ * @returns the session id or null if not found
  */
 export async function getSessionIdFromJoinCode(joinCode: string): Promise<string | null> {
   const result = await pool.query(

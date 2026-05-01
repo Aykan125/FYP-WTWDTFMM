@@ -103,7 +103,6 @@ export function HeadlineInput({ onSubmit, disabled = false, phase }: HeadlineInp
         </Button>
       </form>
 
-      {/* Metadata row */}
       <div className="flex items-center justify-between mt-1.5 px-1">
         <span className="text-[11px] text-gray-300">{headline.length}/280</span>
         {cooldownMs > 0 && (
