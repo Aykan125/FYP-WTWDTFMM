@@ -132,7 +132,7 @@ export function useSocket(): UseSocketReturn {
   const rejoinRef = useRef<{ joinCode: string; playerId: string } | null>(null);
 
   useEffect(() => {
-    // Initialize socket connection
+    // initialize socket connection
     const socket = io(SOCKET_URL, {
       autoConnect: true,
       reconnection: true,
@@ -172,12 +172,12 @@ export function useSocket(): UseSocketReturn {
       setConnected(false);
     });
 
-    // Listen for lobby events
+    // listen for lobby events
     socket.on('lobby:player_joined', (data: { playerId: string; player: Player }) => {
       console.log('Player joined:', data.player);
       setSessionState((prev) => {
         if (!prev) return prev;
-        // Add player if not already in the list
+        // add player if not already in the list
         if (!prev.players.some((p) => p.id === data.playerId)) {
           return {
             ...prev,
@@ -193,17 +193,17 @@ export function useSocket(): UseSocketReturn {
       setSessionState(data.state);
     });
 
-    // Listen for game state updates (phase transitions, etc.)
+    // game state updates (phase transitions, etc.)
     socket.on('game:state', (state: SessionState) => {
       console.log('Game state updated:', state);
       setSessionState(state);
-      // Clear round summary only when returning to PLAYING (keep it for BREAK and FINISHED)
+      // clear round summary only when returning to playing — keep it for break and finished
       if (state.phase === 'PLAYING' || state.phase === 'TUTORIAL' || state.phase === 'WAITING') {
         setRoundSummary(null);
       }
     });
 
-    // Listen for round summary updates
+    // round summary updates
     socket.on('round:summary', (data: { roundNo: number; status: string; summary?: RoundSummaryOutput; error?: string }) => {
       console.log('Round summary update:', data);
       setRoundSummary({
@@ -214,7 +214,7 @@ export function useSocket(): UseSocketReturn {
       });
     });
 
-    // Listen for final narrative summary updates (game-end page)
+    // final narrative summary updates (game-end page)
     socket.on('game:final_summary', (data: { roundNo: number; status: string; summary?: NarrativeSummaryOutput; error?: string }) => {
       console.log('Final summary update:', data);
       setFinalSummary({
@@ -224,11 +224,10 @@ export function useSocket(): UseSocketReturn {
       });
     });
 
-    // Listen for new headlines
+    // new headlines
     socket.on('headline:new', (headline: Headline) => {
       console.log('New headline:', headline);
       setHeadlines((prev) => {
-        // Avoid duplicates
         if (prev.some((h) => h.id === headline.id)) {
           return prev;
         }
@@ -236,7 +235,7 @@ export function useSocket(): UseSocketReturn {
       });
     });
 
-    // Listen for leaderboard updates (real-time score changes)
+    // leaderboard updates (real-time score changes)
     socket.on('leaderboard:update', (data: {
       leaderboard: { playerId: string; totalScore: number; scoreBreakdown?: ScoreBreakdown }[];
       lastScoredHeadline?: {
@@ -267,7 +266,7 @@ export function useSocket(): UseSocketReturn {
         return { ...prev, players: updatedPlayers };
       });
 
-      // Patch headline with its score breakdown
+      // patch headline with its score breakdown
       if (data.lastScoredHeadline?.headlineId && data.lastScoredHeadline.breakdown) {
         const { headlineId, breakdown } = data.lastScoredHeadline;
         setHeadlines((prev) =>
@@ -408,7 +407,7 @@ export function useSocket(): UseSocketReturn {
         { joinCode, roundNo },
         (response: { success: boolean; status?: string; summaryType?: string; summary?: RoundSummaryOutput; error?: string }) => {
           if (response.success) {
-            // Only set as roundSummary if it's a historical recap (not narrative)
+            // only set as roundsummary if it's a historical recap, not narrative
             if (response.summaryType !== 'narrative') {
               setRoundSummary({
                 roundNo,
@@ -446,7 +445,7 @@ export function useSocket(): UseSocketReturn {
             });
             resolve(true);
           } else {
-            // Not a narrative summary or failed
+            // not a narrative summary or failed
             resolve(false);
           }
         }

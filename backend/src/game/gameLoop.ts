@@ -12,10 +12,10 @@ import { getPlayerScoreBreakdowns } from './scoringService.js';
 import { SEED_HEADLINES } from './seedHeadlines.js';
 
 /**
- * Test mode: when GAME_TEST_MODE=true, all time-based durations
+ * test mode: when GAME_TEST_MODE=true, all time-based durations
  * (tutorial, breaks, rounds, cooldown) are scaled by 1/16 so the
  * full game flow can be exercised in ~3 minutes instead of ~46.
- * Does NOT affect production behaviour — flag must be explicitly set.
+ * does not affect production behaviour — flag must be explicitly set.
  */
 const TEST_MODE = process.env.GAME_TEST_MODE === 'true';
 const TIME_SCALE = TEST_MODE ? 1 / 16 : 1;
@@ -29,11 +29,11 @@ const TOTAL_INGAME_MS = 20 * 365.25 * 24 * 60 * 60 * 1000;
 const TUTORIAL_DURATION_MS = Math.round(3 * 60 * 1000 * TIME_SCALE); // 3 min normally, ~11s in test mode
 
 /**
- * Per-break configuration indexed by round number just completed.
- * After round 1 → BREAK_SCHEDULE[0], after round 2 → BREAK_SCHEDULE[1], etc.
+ * per-break configuration indexed by round number just completed.
+ * after round 1 → BREAK_SCHEDULE[0], after round 2 → BREAK_SCHEDULE[1], etc.
  *
- * Selective summary generation: only break 2 (after round 2) has a summary,
- * and it covers rounds 1-2. The final summary (covering all 4 rounds) is
+ * selective summary generation: only break 2 (after round 2) has a summary,
+ * and it covers rounds 1-2. the final summary (covering all 4 rounds) is
  * generated on the FINISHED transition instead.
  */
 interface BreakConfig {
@@ -43,22 +43,22 @@ interface BreakConfig {
 }
 
 const BREAK_SCHEDULE: BreakConfig[] = [
-  { durationMin: 3 * TIME_SCALE, generateSummary: false, summaryFromRound: null },  // After R1
-  { durationMin: 5 * TIME_SCALE, generateSummary: true, summaryFromRound: 1 },      // After R2: covers R1-R2
-  { durationMin: 3 * TIME_SCALE, generateSummary: false, summaryFromRound: null },  // After R3
+  { durationMin: 3 * TIME_SCALE, generateSummary: false, summaryFromRound: null },  // after r1
+  { durationMin: 5 * TIME_SCALE, generateSummary: true, summaryFromRound: 1 },      // after r2: covers r1-r2
+  { durationMin: 3 * TIME_SCALE, generateSummary: false, summaryFromRound: null },  // after r3
 ];
 
-/** Exported for testing */
+/** exported for testing */
 export function getBreakConfig(roundNo: number): BreakConfig {
   const idx = roundNo - 1;
   if (idx < 0 || idx >= BREAK_SCHEDULE.length) {
-    // Fallback for rounds outside the schedule
+    // fallback for rounds outside the schedule
     return { durationMin: 3, generateSummary: false, summaryFromRound: null };
   }
   return BREAK_SCHEDULE[idx];
 }
 
-/** Exported for testing */
+/** exported for testing */
 export function computeRoundSpeedRatio(roundNo: number, playMinutes: number): number {
   const totalWeight = ROUND_SPEED_WEIGHTS.reduce((a, b) => a + b, 0);
   const roundWeight =
@@ -69,8 +69,8 @@ export function computeRoundSpeedRatio(roundNo: number, playMinutes: number): nu
 }
 
 /**
- * Pure function to compute the next phase and round based on current state
- * Exported for testing
+ * pure function to compute the next phase and round based on current state.
+ * exported for testing.
  */
 export function computeNextPhase(
   currentPhase: GamePhase,
@@ -82,27 +82,26 @@ export function computeNextPhase(
   }
 
   if (currentPhase === 'PLAYING') {
-    // After playing the last round, go directly to finished (no final break)
+    // after playing the last round, go directly to finished (no final break)
     if (currentRound >= maxRounds) {
       return { phase: 'FINISHED', round: currentRound };
     }
-    // After playing non-final rounds, go to break (same round)
+    // after non-final rounds, go to break (same round)
     return { phase: 'BREAK', round: currentRound };
   } else if (currentPhase === 'BREAK') {
-    // After break, check if we should start next round or finish
     if (currentRound >= maxRounds) {
       return { phase: 'FINISHED', round: currentRound };
     } else {
       return { phase: 'PLAYING', round: currentRound + 1 };
     }
   } else {
-    // Should not happen in normal flow
+    // should not happen in normal flow
     return { phase: 'FINISHED', round: currentRound };
   }
 }
 
 /**
- * In-memory representation of a running game loop for a single session
+ * in-memory representation of a running game loop for a single session
  */
 class GameLoopInstance {
   private timerHandle: NodeJS.Timeout | null = null;
@@ -182,19 +181,18 @@ class GameLoopInstance {
       `[GameLoop ${this.state.joinCode}] Transitioning: ${fromPhase} → ${toPhase} (round ${roundNo})`
     );
 
-    // Clear existing timer
     if (this.timerHandle) {
       clearTimeout(this.timerHandle);
       this.timerHandle = null;
     }
 
-    // Calculate timing for new phase
+    // calculate timing for new phase
     const now = new Date();
     let phaseStartedAt = now;
     let phaseEndsAt: Date | null = null;
     let inGameStartAt = this.state.inGameStartAt;
 
-    // Accumulate in-game time from the outgoing phase before resetting phaseStartedAt
+    // accumulate in-game time from the outgoing phase before resetting phaseStartedAt
     if (inGameStartAt && this.state.phaseStartedAt) {
       const realElapsed = now.getTime() - this.state.phaseStartedAt.getTime();
       const inGameElapsed = realElapsed * this.state.timelineSpeedRatio;
@@ -208,9 +206,9 @@ class GameLoopInstance {
       if (!inGameStartAt) {
         inGameStartAt = now;
       }
-      // In test mode, scale the round duration AND the speed ratio by the same
-      // factor so the in-game timeline still spans the full 20 years across
-      // the compressed real-time round.
+      // in test mode, scale round duration and speed ratio by the same factor
+      // so the in-game timeline still spans the full 20 years across the
+      // compressed real-time round.
       const effectivePlayMinutes = this.state.playMinutes * TIME_SCALE;
       this.state.timelineSpeedRatio = computeRoundSpeedRatio(roundNo, effectivePlayMinutes);
       phaseEndsAt = new Date(now.getTime() + effectivePlayMinutes * 60 * 1000);
@@ -223,31 +221,28 @@ class GameLoopInstance {
       phaseEndsAt = null;
     }
 
-    // Update local state
     this.state.phase = toPhase;
     this.state.currentRound = roundNo;
     this.state.phaseStartedAt = phaseStartedAt;
     this.state.phaseEndsAt = phaseEndsAt;
     this.state.inGameStartAt = inGameStartAt;
 
-    // Persist to database
     await this.persistStateTransition(fromPhase, toPhase, roundNo);
 
-    // Broadcast state change to all players
     await this.broadcastGameState();
 
-    // Start seed drip-feed when entering TUTORIAL
+    // start seed drip-feed when entering tutorial
     if (toPhase === 'TUTORIAL' && this.archivePlayerId) {
       this.startSeedDrip();
     }
 
-    // Stop seed drip when leaving TUTORIAL
+    // stop seed drip when leaving tutorial
     if (fromPhase === 'TUTORIAL' && this.seedDripHandle) {
       clearInterval(this.seedDripHandle);
       this.seedDripHandle = null;
     }
 
-    // Generate round summary when transitioning to BREAK (only if this break has one)
+    // generate round summary on break transition (only if this break has one)
     if (toPhase === 'BREAK') {
       const breakCfg = getBreakConfig(roundNo);
       if (breakCfg.generateSummary && breakCfg.summaryFromRound !== null) {
@@ -260,7 +255,7 @@ class GameLoopInstance {
       }
     }
 
-    // Generate final narrative summary when transitioning to FINISHED
+    // generate final narrative summary on transition to finished
     if (toPhase === 'FINISHED' && fromPhase !== 'FINISHED') {
       this.generateAndBroadcastFinalNarrative().catch((err) => {
         console.error(
@@ -270,7 +265,7 @@ class GameLoopInstance {
       });
     }
 
-    // Schedule next transition if not finished
+    // schedule next transition if not finished
     if (toPhase !== 'FINISHED' && phaseEndsAt) {
       const nextPhase = this.computeNextPhase(toPhase, roundNo);
       const delay = phaseEndsAt.getTime() - now.getTime();
@@ -307,7 +302,6 @@ class GameLoopInstance {
     try {
       await client.query('BEGIN');
 
-      // Update game_sessions
       await client.query(
         `UPDATE game_sessions
          SET phase = $1,
@@ -326,12 +320,11 @@ class GameLoopInstance {
           this.state.phaseEndsAt,
           this.state.inGameStartAt,
           this.state.timelineSpeedRatio,
-          toPhase, // Keep status in sync with phase for now
+          toPhase, // keep status in sync with phase for now
           this.state.sessionId,
         ]
       );
 
-      // Insert state transition record
       await client.query(
         `INSERT INTO game_session_state_transitions 
          (session_id, from_phase, to_phase, round_no)
@@ -349,7 +342,7 @@ class GameLoopInstance {
   }
 
   private async broadcastGameState(): Promise<void> {
-    // Get full session state from database (includes players)
+    // get full session state from database (includes players)
     const result = await pool.query(
       `SELECT
         s.id,
@@ -393,7 +386,7 @@ class GameLoopInstance {
     const session = result.rows[0];
     const serverNow = new Date(session.server_now);
 
-    // Compute in-game time
+    // compute in-game time
     let inGameNow: Date | null = null;
     if (session.in_game_start_at && session.phase_started_at) {
       const inGameStart = new Date(session.in_game_start_at);
@@ -403,10 +396,9 @@ class GameLoopInstance {
       inGameNow = new Date(inGameStart.getTime() + inGameElapsed);
     }
 
-    // Fetch score breakdowns for all players
     const breakdowns = await getPlayerScoreBreakdowns(this.state.sessionId);
 
-    // Process players to extract currentPriority from planet state
+    // extract currentPriority from each player's planet state
     const processedPlayers = session.players
       .filter((p: any) => p.id !== null)
       .map((p: any) => {
@@ -445,7 +437,7 @@ class GameLoopInstance {
       players: processedPlayers,
     };
 
-    // Broadcast to all players in the session room
+    // broadcast to all players in the session room
     const roomName = `session:${this.state.joinCode}`;
     this.io.to(roomName).emit('game:state', gameState);
 
@@ -455,13 +447,13 @@ class GameLoopInstance {
   }
 
   /**
-   * Generate and broadcast round summary asynchronously.
-   * Called after transitioning to BREAK phase.
+   * generate and broadcast round summary asynchronously.
+   * called after transitioning to break phase.
    */
   private async generateAndBroadcastSummary(toRound: number, fromRound: number = toRound): Promise<void> {
     const roomName = `session:${this.state.joinCode}`;
 
-    // Emit "generating" status immediately (use toRound as the storage key)
+    // emit "generating" status immediately (use toRound as the storage key)
     this.io.to(roomName).emit('round:summary', {
       roundNo: toRound,
       status: 'generating',
@@ -479,7 +471,6 @@ class GameLoopInstance {
         maxRounds: this.state.maxRounds,
       });
 
-      // Broadcast completed summary
       this.io.to(roomName).emit('round:summary', {
         roundNo: toRound,
         status: 'completed',
@@ -492,7 +483,6 @@ class GameLoopInstance {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
 
-      // Broadcast error status
       this.io.to(roomName).emit('round:summary', {
         roundNo: toRound,
         status: 'error',
@@ -507,15 +497,15 @@ class GameLoopInstance {
   }
 
   /**
-   * Generate the final game-end narrative summary asynchronously.
-   * Broadcast as a `game:final_summary` event so the frontend can render
+   * generate the final game-end narrative summary asynchronously.
+   * broadcast as a `game:final_summary` event so the frontend can render
    * the experience reports on the GameEnd page.
    */
   private async generateAndBroadcastFinalNarrative(): Promise<void> {
     const roomName = `session:${this.state.joinCode}`;
     const roundNo = this.state.maxRounds;
 
-    // Emit "generating" status immediately
+    // emit "generating" status immediately
     this.io.to(roomName).emit('game:final_summary', {
       roundNo,
       status: 'generating',
@@ -631,7 +621,7 @@ class GameLoopInstance {
 }
 
 /**
- * Singleton manager for all active game loops
+ * singleton manager for all active game loops
  */
 class GameLoopManager {
   private loops: Map<string, GameLoopInstance> = new Map();
@@ -653,7 +643,7 @@ class GameLoopManager {
       throw new Error('Socket.IO server not initialized in GameLoopManager');
     }
 
-    // Load config from database
+    // load config from database
     const result = await pool.query(
       `SELECT id, join_code, play_minutes, break_minutes, max_rounds, timeline_speed_ratio
        FROM game_sessions
@@ -706,6 +696,5 @@ class GameLoopManager {
   }
 }
 
-// Export singleton instance
 export const gameLoopManager = new GameLoopManager();
 

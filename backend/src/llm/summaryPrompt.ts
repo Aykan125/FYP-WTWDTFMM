@@ -1,18 +1,14 @@
 /**
- * Summary prompt builder and JSON schema for round summary generation.
- * Builds the prompt for AI-generated narrative summaries displayed during BREAK phase.
+ * summary prompt builder and json schema for round summary generation.
+ * builds the prompt for ai-generated narrative summaries displayed during break phase.
  */
 
 import { JsonSchemaDefinition } from './openaiResponsesClient.js';
 import { SummaryPromptInput, RoundHeadlineInput } from './summaryTypes.js';
 
-// ============================================================================
-// JSON Schema for Responses API
-// ============================================================================
-
 /**
- * JSON Schema that enforces the structure of the round summary output.
- * Used with the OpenAI Responses API response_format.
+ * json schema that enforces the structure of the round summary output.
+ * used with the openai responses api response_format.
  */
 export const summaryJsonSchema: JsonSchemaDefinition = {
   name: 'round_summary',
@@ -77,12 +73,8 @@ export const summaryJsonSchema: JsonSchemaDefinition = {
   },
 };
 
-// ============================================================================
-// Prompt Builder
-// ============================================================================
-
 /**
- * Format a single headline for the prompt.
+ * format a single headline for the prompt.
  */
 function formatHeadline(headline: RoundHeadlineInput, index: number): string {
   return `${index + 1}. "${headline.headline}" by ${headline.player}
@@ -91,21 +83,20 @@ function formatHeadline(headline: RoundHeadlineInput, index: number): string {
 }
 
 /**
- * Build the summary prompt from the input data.
+ * build the summary prompt from the input data.
  */
 export function buildSummaryPrompt(input: SummaryPromptInput): string {
   const { fromRound, toRound, totalRounds, headlines } = input;
 
-  // Format all headlines
   const formattedHeadlines = headlines.length > 0
     ? headlines.map((h, i) => formatHeadline(h, i)).join('\n\n')
     : 'No headlines were submitted in this period.';
 
-  // Count unique players
+  // count unique players
   const uniquePlayers = new Set(headlines.map(h => h.player));
   const playerCount = uniquePlayers.size;
 
-  // Describe the period being summarised
+  // describe the period being summarised
   const periodLabel = fromRound === toRound
     ? `Round ${toRound} of ${totalRounds}`
     : (fromRound === 1 && toRound === totalRounds
@@ -138,7 +129,7 @@ Write in a journalistic or documentary style. The tone should be informative and
 }
 
 /**
- * Build the system instructions for the summary generator.
+ * build the system instructions for the summary generator.
  */
 export function buildSummaryInstructions(): string {
   return `You are a future historian documenting events from an alternate timeline where AI has transformed society.

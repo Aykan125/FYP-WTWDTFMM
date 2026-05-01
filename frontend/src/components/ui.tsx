@@ -1,13 +1,9 @@
 /**
- * Shared UI primitives for consistent styling across the app.
- * Light modern theme with indigo accent color.
+ * shared ui primitives for consistent styling across the app.
+ * light modern theme with indigo accent color.
  */
 
 import React from 'react';
-
-// ============================================================================
-// Card
-// ============================================================================
 
 interface CardProps {
   children: React.ReactNode;
@@ -24,10 +20,6 @@ export function Card({ children, className = '', padding = 'md' }: CardProps) {
     </div>
   );
 }
-
-// ============================================================================
-// Section Title
-// ============================================================================
 
 interface SectionTitleProps {
   children: React.ReactNode;
@@ -47,10 +39,6 @@ export function SectionTitle({ children, count, className = '' }: SectionTitlePr
     </div>
   );
 }
-
-// ============================================================================
-// Badge
-// ============================================================================
 
 interface BadgeProps {
   children: React.ReactNode;
@@ -76,10 +64,6 @@ export function Badge({ children, variant = 'default', className = '' }: BadgePr
     </span>
   );
 }
-
-// ============================================================================
-// Button
-// ============================================================================
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'ghost';

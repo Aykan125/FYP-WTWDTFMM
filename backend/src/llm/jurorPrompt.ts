@@ -1,13 +1,9 @@
 /**
- * Juror prompt builder and JSON schema for the OpenAI Responses API.
- * This module builds the prompt for headline evaluation and defines the expected output structure.
+ * juror prompt builder and json schema for the openai responses api.
+ * this module builds the prompt for headline evaluation and defines the expected output structure.
  */
 
 import { JsonSchemaDefinition } from './openaiResponsesClient.js';
-
-// ============================================================================
-// Types for Input
-// ============================================================================
 
 export interface HeadlineEntry {
   id?: string;
@@ -24,10 +20,6 @@ export interface JurorPromptInput {
   headlinesList: HeadlineEntry[] | string[];
   planetList: PlanetEntry[];
 }
-
-// ============================================================================
-// Types for Output (what we expect from the model)
-// ============================================================================
 
 export type PlausibilityBand = 1 | 2 | 3 | 4 | 5;
 export type PlausibilityLabel =
@@ -79,10 +71,6 @@ export interface JurorEvaluationOutput {
   HEADLINES: HeadlinesResult;
 }
 
-// ============================================================================
-// Band Labels (mapping)
-// ============================================================================
-
 export const BAND_LABELS: Record<PlausibilityBand, PlausibilityLabel> = {
   1: 'inevitable',
   2: 'probable',
@@ -91,13 +79,9 @@ export const BAND_LABELS: Record<PlausibilityBand, PlausibilityLabel> = {
   5: 'preposterous',
 };
 
-// ============================================================================
-// JSON Schema for Responses API
-// ============================================================================
-
 /**
- * JSON Schema that enforces the structure of the juror evaluation output.
- * Used with the OpenAI Responses API response_format.
+ * json schema that enforces the structure of the juror evaluation output.
+ * used with the openai responses api response_format.
  */
 export const jurorJsonSchema: JsonSchemaDefinition = {
   name: 'juror_evaluation',
@@ -191,17 +175,13 @@ export const jurorJsonSchema: JsonSchemaDefinition = {
   },
 };
 
-// ============================================================================
-// Prompt Builder
-// ============================================================================
-
 /**
- * Build the juror prompt from the input data.
+ * build the juror prompt from the input data.
  */
 export function buildJurorPrompt(input: JurorPromptInput): string {
   const { storyDirection, headlinesList, planetList } = input;
 
-  // Format headlines list
+  // format headlines list
   const formattedHeadlines = headlinesList
     .map((h, i) => {
       const text = typeof h === 'string' ? h : h.text;
@@ -210,7 +190,7 @@ export function buildJurorPrompt(input: JurorPromptInput): string {
     })
     .join('\n');
 
-  // Format planet list
+  // format planet list
   const formattedPlanets = planetList
     .map((p) => `- ${p.id}: ${p.description}`)
     .join('\n');
@@ -305,7 +285,7 @@ If helpful to you, please discuss your reasoning before you complete these tasks
 }
 
 /**
- * Build the system instructions for the juror.
+ * build the system instructions for the juror.
  */
 export function buildJurorInstructions(): string {
   return `You are a game juror evaluating story directions for a collaborative AI futures game. You must:

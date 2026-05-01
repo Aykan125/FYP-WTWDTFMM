@@ -1,5 +1,5 @@
 /**
- * HTTP routes for the juror evaluation API.
+ * http routes for the juror evaluation api.
  */
 
 import { Router, Request, Response } from 'express';
@@ -12,10 +12,6 @@ import {
 import { OpenAIError } from '../llm/openaiResponsesClient.js';
 
 const router = Router();
-
-// ============================================================================
-// Request Validation Schema
-// ============================================================================
 
 const headlineEntrySchema = z.union([
   z.string().min(1, 'Headline text cannot be empty'),
@@ -47,17 +43,12 @@ const evaluateRequestSchema = z.object({
 
 type EvaluateRequest = z.infer<typeof evaluateRequestSchema>;
 
-// ============================================================================
-// Route Handlers
-// ============================================================================
-
 /**
  * POST /juror/evaluate
- * Evaluate a story direction using the OpenAI juror.
+ * evaluate a story direction using the openai juror.
  */
 router.post('/evaluate', async (req: Request, res: Response): Promise<void> => {
   try {
-    // Validate request body
     let validatedBody: EvaluateRequest;
     try {
       validatedBody = evaluateRequestSchema.parse(req.body);
@@ -75,19 +66,17 @@ router.post('/evaluate', async (req: Request, res: Response): Promise<void> => {
       throw err;
     }
 
-    // Normalize headlinesList to HeadlineEntry[]
+    // normalize headlinesList to HeadlineEntry[]
     const headlinesList = validatedBody.headlinesList.map((h) =>
       typeof h === 'string' ? { text: h } : h
     );
 
-    // Call the juror service
     const result = await evaluateJuror({
       storyDirection: validatedBody.storyDirection,
       headlinesList,
       planetList: validatedBody.planetList,
     });
 
-    // Return the evaluation result
     res.json({
       success: true,
       evaluation: result.evaluation,
@@ -95,7 +84,6 @@ router.post('/evaluate', async (req: Request, res: Response): Promise<void> => {
       usage: result.usage,
     });
   } catch (error) {
-    // Handle specific error types
     if (error instanceof JurorValidationError) {
       console.error('Juror validation error:', error.message, error.details);
       res.status(502).json({
@@ -118,7 +106,6 @@ router.post('/evaluate', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Generic error
     console.error('Unexpected error in juror evaluation:', error);
     res.status(500).json({
       error: 'Internal server error',
@@ -129,7 +116,7 @@ router.post('/evaluate', async (req: Request, res: Response): Promise<void> => {
 
 /**
  * GET /juror/health
- * Health check for the juror service.
+ * health check for the juror service.
  */
 router.get('/health', (_req: Request, res: Response): void => {
   const hasApiKey = !!process.env.OPENAI_API_KEY;

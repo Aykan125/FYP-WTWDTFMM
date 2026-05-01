@@ -106,7 +106,6 @@ export function ScoreBarChart({
         })}
       </div>
 
-      {/* Legend */}
       <div className="shrink-0 border-t border-gray-100 mt-2 pt-2 flex flex-wrap gap-x-3 gap-y-1">
         {SEGMENTS.map((seg) => (
           <div key={seg.key} className="flex items-center gap-1">

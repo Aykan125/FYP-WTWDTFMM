@@ -1,17 +1,13 @@
 /**
- * Narrative prompt for the end-of-game summary.
+ * narrative prompt for the end-of-game summary.
  *
- * Unlike the historical recap used during BREAK phases, the final
+ * unlike the historical recap used during break phases, the final
  * summary is a set of fictional first-person experience reports
  * from different characters living through the 20-year span.
  */
 
 import { JsonSchemaDefinition } from './openaiResponsesClient.js';
 import { NarrativePromptInput } from './summaryTypes.js';
-
-// ============================================================================
-// JSON Schema for Responses API
-// ============================================================================
 
 export const narrativeJsonSchema: JsonSchemaDefinition = {
   name: 'narrative_summary',
@@ -54,10 +50,6 @@ export const narrativeJsonSchema: JsonSchemaDefinition = {
     additionalProperties: false,
   },
 };
-
-// ============================================================================
-// Prompt Builders
-// ============================================================================
 
 export function buildNarrativeInstructions(): string {
   return `You are a literary fiction writer crafting a set of short personal accounts set against years of real and imagined AI history. You are given a chronological list of news headlines from this timeline. Your task is NOT to summarise them, report them, or recap them — your task is to write multiple short first-person "experience reports" that together illustrate different facets of what happened in this period.

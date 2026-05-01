@@ -59,7 +59,6 @@ export function JoinLobby({
 
   const lobbyContent = (
     <>
-      {/* Title */}
       <div className="text-center space-y-1">
         <h1 className="text-3xl font-bold text-gray-900">Waiting for Game</h1>
         <p className="text-sm text-gray-500">
@@ -67,7 +66,6 @@ export function JoinLobby({
         </p>
       </div>
 
-      {/* Status card */}
       <Card padding="lg" className="text-center space-y-2">
         <div className="flex items-center justify-center gap-2">
           <div className="w-2.5 h-2.5 bg-emerald-400 rounded-full animate-pulse" />
@@ -80,7 +78,6 @@ export function JoinLobby({
         </p>
       </Card>
 
-      {/* Tip */}
       <p className="text-xs text-center text-gray-400">
         More players can join using the invite link.
       </p>

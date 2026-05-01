@@ -1,19 +1,19 @@
 import { useState, useEffect, useRef } from 'react';
 
 interface UseInGameNowOptions {
-  /** Last inGameNow snapshot from the server (ISO string). */
+  /** last ingamenow snapshot from the server (iso string). */
   inGameNow: string | null;
-  /** Server timestamp that accompanied the snapshot (ISO string). */
+  /** server timestamp that accompanied the snapshot (iso string). */
   serverNow: string;
-  /** How many in-game seconds per real-world second. */
+  /** how many in-game seconds per real-world second. */
   timelineSpeedRatio: number;
-  /** Only tick while true (e.g. during PLAYING/BREAK). */
+  /** only tick while true (e.g. during playing/break). */
   enabled?: boolean;
 }
 
 /**
- * Derives a ticking in-game timestamp from the last server snapshot,
- * updating every minute so the "Current Period" card stays fresh
+ * derives a ticking in-game timestamp from the last server snapshot,
+ * updating every minute so the "current period" card stays fresh
  * without requiring extra socket emissions.
  */
 export function useInGameNow({
@@ -25,21 +25,20 @@ export function useInGameNow({
   const [derived, setDerived] = useState<string | null>(inGameNow);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Snapshot when we received the server values
+  // snapshot the moment we received the server values
   const snapshotRef = useRef({
     clientTime: Date.now(),
     serverTime: new Date(serverNow).getTime(),
     inGameTime: inGameNow ? new Date(inGameNow).getTime() : 0,
   });
 
-  // Re-snapshot whenever the server sends new values
+  // re-snapshot whenever the server sends new values, then immediately recompute
   useEffect(() => {
     snapshotRef.current = {
       clientTime: Date.now(),
       serverTime: new Date(serverNow).getTime(),
       inGameTime: inGameNow ? new Date(inGameNow).getTime() : 0,
     };
-    // Also immediately recompute
     if (inGameNow) {
       setDerived(inGameNow);
     } else {
@@ -61,16 +60,15 @@ export function useInGameNow({
       const snap = snapshotRef.current;
       if (snap.inGameTime === 0) return;
 
-      // How much real time has elapsed since the snapshot
+      // scale real elapsed by timelinespeedratio to get in-game elapsed
       const realElapsedMs = Date.now() - snap.clientTime;
-      // Scale by timelineSpeedRatio to get in-game elapsed
       const inGameElapsedMs = realElapsedMs * timelineSpeedRatio;
       const newInGameTime = snap.inGameTime + inGameElapsedMs;
 
       setDerived(new Date(newInGameTime).toISOString());
     };
 
-    // Compute immediately, then every 5 seconds
+    // compute immediately, then every 5 seconds
     compute();
     intervalRef.current = setInterval(compute, 5_000);
 

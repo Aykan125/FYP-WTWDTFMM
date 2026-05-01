@@ -47,10 +47,7 @@ export function GameEnd({
         import('jspdf').then((m) => m.jsPDF),
       ]);
 
-      // Build the PDF programmatically with jsPDF native text rendering.
-      // The leaderboard chart is captured as an image (it's a visual);
-      // everything else is real text so it stays selectable, doesn't get
-      // sliced through page breaks, and isn't bound to a scroll viewport.
+      // build the pdf with native text rendering — leaderboard chart is captured as an image, everything else is real text so it stays selectable and doesn't slice across page breaks
       const pdf = new jsPDF('p', 'mm', 'a4');
       const margin = 15;
       const pageWidth = 210;
@@ -98,7 +95,7 @@ export function GameEnd({
         if (opts?.gapAfter) y += opts.gapAfter;
       };
 
-      // Header
+      // header
       writeText('Future Headlines', 22, { bold: true, gapAfter: 1 });
       writeText(
         `Session ${joinCode} · ${maxRounds} rounds · 20 years of history`,
@@ -106,7 +103,7 @@ export function GameEnd({
         { color: [120, 120, 120], gapAfter: 6 }
       );
 
-      // Leaderboard
+      // leaderboard
       writeText('Final Leaderboard', 14, {
         bold: true,
         color: [60, 60, 60],
@@ -131,7 +128,7 @@ export function GameEnd({
       );
       y += imgHeight + 8;
 
-      // Timeline — iterate ALL headlines from props, not the scroll viewport
+      // timeline — iterate all headlines from props, not the scroll viewport
       writeText('Timeline', 14, {
         bold: true,
         color: [60, 60, 60],
@@ -145,7 +142,7 @@ export function GameEnd({
               year: 'numeric',
             })
           : '';
-        // Keep the meta line and at least one line of headline together
+        // keep the meta line and at least one line of headline together
         ensureSpace(12);
         writeText(`${h.playerNickname}  ·  R${h.roundNo}  ·  ${dateStr}`, 8, {
           color: [120, 120, 120],
@@ -153,7 +150,7 @@ export function GameEnd({
         writeText(h.text, 10, { gapAfter: 3 });
       }
 
-      // Experience reports
+      // experience reports
       if (hasSummary && reports.length > 0) {
         y += 4;
         writeText('Experience Reports From These Years', 14, {
@@ -169,7 +166,7 @@ export function GameEnd({
 
         for (let i = 0; i < reports.length; i++) {
           const r = reports[i];
-          // Don't strand a character header at the bottom of a page
+          // don't strand a character header at the bottom of a page
           ensureSpace(35);
           writeText(r.character.name, 12, { bold: true });
           writeText(r.character.role, 9, {
@@ -203,7 +200,6 @@ export function GameEnd({
     <main className="flex-1 min-h-0 overflow-y-auto">
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="space-y-6">
-          {/* Header */}
           <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-800">Game Complete</h1>
             <p className="text-sm text-gray-400 mt-1">
@@ -211,7 +207,6 @@ export function GameEnd({
             </p>
           </div>
 
-          {/* Leaderboard */}
           <Card padding="md">
             <SectionTitle>Final Leaderboard</SectionTitle>
             <div ref={leaderboardRef}>
@@ -225,7 +220,7 @@ export function GameEnd({
             </div>
           </Card>
 
-          {/* Headlines list (replaces the old Game Statistics card) */}
+          {/* headlines list (replaces the old game statistics card) */}
           <div className="h-[400px]">
             <HeadlineFeed
               headlines={realHeadlines}
@@ -233,7 +228,6 @@ export function GameEnd({
             />
           </div>
 
-          {/* Final Narrative — Experience Reports */}
           <Card padding="md">
             <SectionTitle>Experience Reports From These Years</SectionTitle>
 
@@ -303,7 +297,6 @@ export function GameEnd({
           </Card>
         </div>
 
-        {/* Buttons */}
         <div className="flex justify-center gap-3 pb-8 pt-6">
           <Button
             variant="primary"

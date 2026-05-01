@@ -12,43 +12,42 @@ import { migratePlanetState, initialPlanetTallyState, selectPriorityPlanet } fro
 import { getRoundSummary, getSessionIdFromJoinCode } from '../game/summaryService.js';
 
 
-// Rate limiting: track last submission time per player
-// Key: `${sessionId}:${playerId}`, Value: timestamp in ms
+// rate limiting: track last submission time per player.
+// key: `${sessionId}:${playerId}`, value: timestamp in ms
 const lastHeadlineSubmission: Map<string, number> = new Map();
 
-// In test mode (GAME_TEST_MODE=true), the cooldown is scaled to ~6s
+// in test mode (GAME_TEST_MODE=true), the cooldown is scaled to ~6s
 // to match the compressed game timing in gameLoop.ts.
 const TEST_MODE = process.env.GAME_TEST_MODE === 'true';
 const HEADLINE_COOLDOWN_MS = TEST_MODE ? Math.round(90_000 / 16) : 90_000; // ~6s test, 90s normal
 
 /**
- * Count unique other authors from STRONG linked headlines using DB lookup.
+ * count unique other authors from STRONG linked headlines using db lookup.
  *
- * Looks at only STRONG connections, finds who wrote each linked headline,
+ * looks at only strong connections, finds who wrote each linked headline,
  * and counts how many distinct other players (not the submitter) are represented.
  *
- * @param linkedHeadlines - Array of linked headlines from LLM
- * @param sessionId - Session ID to query DB for headline owners
- * @param currentPlayerId - The player who submitted the headline
- * @returns Number of unique other authors (0-3)
+ * @param linkedHeadlines - array of linked headlines from llm
+ * @param sessionId - session id to query db for headline owners
+ * @param currentPlayerId - the player who submitted the headline
+ * @returns number of unique other authors (0-3)
  */
 async function deriveUniqueOtherAuthorCount(
   linkedHeadlines: LinkedHeadline[],
   sessionId: string,
   currentPlayerId: string
 ): Promise<number> {
-  // Filter to STRONG connections only
+  // filter to STRONG connections only
   const strongConnections = linkedHeadlines.filter((h) => h.strength === 'STRONG');
 
   if (strongConnections.length === 0) {
     return 0;
   }
 
-  // Extract headline texts to look up in DB
   const headlineTexts = strongConnections.map((h) => h.headline);
 
   try {
-    // Query DB to find the player_id for each linked headline
+    // query db to find the player_id for each linked headline
     const result = await pool.query(
       `SELECT player_id, COALESCE(selected_headline, headline_text) as text
        FROM game_session_headlines
@@ -57,7 +56,7 @@ async function deriveUniqueOtherAuthorCount(
       [sessionId, headlineTexts]
     );
 
-    // Collect unique other player IDs
+    // collect unique other player ids
     const otherAuthors = new Set<string>();
     for (const row of result.rows) {
       if (row.player_id !== currentPlayerId) {
@@ -73,27 +72,27 @@ async function deriveUniqueOtherAuthorCount(
 }
 
 /**
- * Check if a player can submit a headline (rate limiting)
+ * check if a player can submit a headline (rate limiting)
  */
 function canSubmitHeadline(sessionId: string, playerId: string): { allowed: boolean; remainingMs: number } {
   const key = `${sessionId}:${playerId}`;
   const lastSubmission = lastHeadlineSubmission.get(key);
   const now = Date.now();
-  
+
   if (!lastSubmission) {
     return { allowed: true, remainingMs: 0 };
   }
-  
+
   const elapsed = now - lastSubmission;
   if (elapsed >= HEADLINE_COOLDOWN_MS) {
     return { allowed: true, remainingMs: 0 };
   }
-  
+
   return { allowed: false, remainingMs: HEADLINE_COOLDOWN_MS - elapsed };
 }
 
 /**
- * Record a headline submission for rate limiting
+ * record a headline submission for rate limiting
  */
 function recordHeadlineSubmission(sessionId: string, playerId: string): void {
   const key = `${sessionId}:${playerId}`;
@@ -101,7 +100,7 @@ function recordHeadlineSubmission(sessionId: string, playerId: string): void {
 }
 
 /**
- * Clear rate limit data for a session (call on session cleanup)
+ * clear rate limit data for a session (call on session cleanup)
  */
 export function clearSessionRateLimits(sessionId: string): void {
   for (const key of lastHeadlineSubmission.keys()) {
@@ -148,7 +147,7 @@ interface SessionState {
 }
 
 /**
- * Fetch current session state from database including game timing
+ * fetch current session state from database including game timing
  */
 async function getSessionState(joinCode: string): Promise<SessionState | null> {
   try {
@@ -192,7 +191,7 @@ async function getSessionState(joinCode: string): Promise<SessionState | null> {
     const session = result.rows[0];
     const serverNow = new Date(session.server_now);
 
-    // Compute in-game time
+    // compute in-game time
     let inGameNow: Date | null = null;
     if (session.in_game_start_at && session.phase_started_at) {
       const inGameStart = new Date(session.in_game_start_at);
@@ -202,10 +201,9 @@ async function getSessionState(joinCode: string): Promise<SessionState | null> {
       inGameNow = new Date(inGameStart.getTime() + inGameElapsed);
     }
 
-    // Fetch score breakdowns for all players
     const breakdowns = await getPlayerScoreBreakdowns(session.id);
 
-    // Process players to extract currentPriority from planet state
+    // extract currentPriority from each player's planet state
     const processedPlayers = session.players
       .filter((p: any) => p.id !== null)
       .map((p: any) => {
@@ -250,22 +248,22 @@ async function getSessionState(joinCode: string): Promise<SessionState | null> {
 }
 
 /**
- * Get room name for a session
+ * get room name for a session
  */
 function getRoomName(joinCode: string): string {
   return `session:${joinCode}`;
 }
 
 /**
- * Setup Socket.IO event handlers for lobby functionality
+ * setup socket.io event handlers for lobby functionality
  */
 export function setupLobbyHandlers(io: Server): void {
   io.on('connection', (socket: Socket) => {
     console.log(`Client connected: ${socket.id}`);
 
     /**
-     * Join lobby room
-     * Client should emit this after successfully creating or joining a session
+     * join lobby room.
+     * client should emit this after successfully creating or joining a session
      */
     socket.on('lobby:join', async (data: JoinLobbyData, callback) => {
       try {
@@ -279,7 +277,6 @@ export function setupLobbyHandlers(io: Server): void {
           return;
         }
 
-        // Verify session exists
         const sessionState = await getSessionState(joinCode);
         if (!sessionState) {
           callback?.({
@@ -289,7 +286,7 @@ export function setupLobbyHandlers(io: Server): void {
           return;
         }
 
-        // Verify player belongs to this session
+        // verify player belongs to this session
         const playerInSession = sessionState.players.some(
           (p) => p.id === playerId
         );
@@ -301,11 +298,10 @@ export function setupLobbyHandlers(io: Server): void {
           return;
         }
 
-        // Join the room
         const roomName = getRoomName(joinCode);
         await socket.join(roomName);
 
-        // Store session info in socket data for later use
+        // store session info in socket data for later use
         socket.data.joinCode = joinCode;
         socket.data.playerId = playerId;
 
@@ -313,13 +309,12 @@ export function setupLobbyHandlers(io: Server): void {
           `Player ${playerId} joined lobby ${joinCode} (socket: ${socket.id})`
         );
 
-        // Send current state to the joining client
         callback?.({
           success: true,
           state: sessionState,
         });
 
-        // Broadcast to others in the room that someone joined
+        // broadcast to others in the room that someone joined
         socket.to(roomName).emit('lobby:player_joined', {
           playerId,
           player: sessionState.players.find((p) => p.id === playerId),
@@ -334,7 +329,7 @@ export function setupLobbyHandlers(io: Server): void {
     });
 
     /**
-     * Request current session state
+     * request current session state
      */
     socket.on('lobby:get_state', async (data: { joinCode: string }, callback) => {
       try {
@@ -371,7 +366,7 @@ export function setupLobbyHandlers(io: Server): void {
     });
 
     /**
-     * Host starts the game
+     * host starts the game
      */
     socket.on('lobby:start_game', async (data: { joinCode: string }, callback) => {
       try {
@@ -386,7 +381,7 @@ export function setupLobbyHandlers(io: Server): void {
           return;
         }
 
-        // Verify the player is the host
+        // verify the player is the host
         const sessionState = await getSessionState(joinCode);
         if (!sessionState) {
           callback?.({
@@ -412,18 +407,16 @@ export function setupLobbyHandlers(io: Server): void {
           return;
         }
 
-        // Initialize planet state for all players before starting the game
+        // initialize planet state for all players before starting the game
         for (const player of sessionState.players) {
-          // Create initial planet tally state
           const initialState = initialPlanetTallyState(DEFAULT_PLANETS);
-          // Select a random initial priority planet
+          // pick a random initial priority planet
           const initialPriority = selectPriorityPlanet(initialState, DEFAULT_PLANETS);
           const stateWithPriority = {
             ...initialState,
             currentPriority: initialPriority,
           };
 
-          // Update the player's planet_usage_state in the database
           await pool.query(
             `UPDATE session_players
              SET planet_usage_state = $1
@@ -432,7 +425,7 @@ export function setupLobbyHandlers(io: Server): void {
           );
         }
 
-        // Insert Archive system player
+        // insert Archive system player
         const archiveResult = await pool.query(
           `INSERT INTO session_players (session_id, nickname, is_host, is_system, planet_usage_state)
            VALUES ($1, 'Archive', false, true, '{}')
@@ -441,10 +434,9 @@ export function setupLobbyHandlers(io: Server): void {
         );
         const archivePlayerId = archiveResult.rows[0].id;
 
-        // Start the game via GameLoopManager (seeds will drip-feed during TUTORIAL phase)
+        // start the game via GameLoopManager (seeds will drip-feed during tutorial phase)
         await gameLoopManager.handleHostStartGame(sessionState.id, joinCode, archivePlayerId);
 
-        // Get updated state
         const updatedState = await getSessionState(joinCode);
 
         callback?.({
@@ -463,7 +455,7 @@ export function setupLobbyHandlers(io: Server): void {
     });
 
     /**
-     * Handle disconnection
+     * handle disconnection
      */
     socket.on('disconnect', () => {
       const { joinCode, playerId } = socket.data;
@@ -471,13 +463,13 @@ export function setupLobbyHandlers(io: Server): void {
         `Client disconnected: ${socket.id}${joinCode ? ` (session: ${joinCode}, player: ${playerId})` : ''}`
       );
 
-      // Note: We don't remove players from the database on disconnect
-      // They can reconnect and rejoin the same lobby
-      // Could emit a "player offline" event here if needed
+      // note: we don't remove players from the database on disconnect.
+      // they can reconnect and rejoin the same lobby.
+      // could emit a "player offline" event here if needed
     });
 
     /**
-     * Handle explicit leave
+     * handle explicit leave
      */
     socket.on('lobby:leave', async () => {
       const { joinCode } = socket.data;
@@ -491,8 +483,8 @@ export function setupLobbyHandlers(io: Server): void {
     });
 
     /**
-     * Submit a headline (story direction)
-     * Flow: validate -> fetch context -> LLM evaluation -> dice roll -> store -> broadcast
+     * submit a headline (story direction).
+     * flow: validate -> fetch context -> llm evaluation -> dice roll -> store -> broadcast
      */
     socket.on('headline:submit', async (data: { joinCode: string; headline: string }, callback) => {
       try {
@@ -506,7 +498,6 @@ export function setupLobbyHandlers(io: Server): void {
           return;
         }
 
-        // Validate input
         let validatedData;
         try {
           validatedData = submitHeadlineSchema.parse(data);
@@ -523,7 +514,6 @@ export function setupLobbyHandlers(io: Server): void {
 
         const { joinCode, headline: storyDirection } = validatedData;
 
-        // Get session state
         const sessionState = await getSessionState(joinCode);
         if (!sessionState) {
           callback?.({
@@ -533,7 +523,7 @@ export function setupLobbyHandlers(io: Server): void {
           return;
         }
 
-        // Verify player belongs to this session
+        // verify player belongs to this session
         const player = sessionState.players.find((p) => p.id === playerId);
         if (!player) {
           callback?.({
@@ -543,7 +533,7 @@ export function setupLobbyHandlers(io: Server): void {
           return;
         }
 
-        // Check phase - only allow during PLAYING
+        // only allow during PLAYING phase
         if (sessionState.phase !== 'PLAYING') {
           callback?.({
             success: false,
@@ -552,7 +542,7 @@ export function setupLobbyHandlers(io: Server): void {
           return;
         }
 
-        // Check rate limit
+        // check rate limit
         const rateLimitCheck = canSubmitHeadline(sessionState.id, playerId);
         if (!rateLimitCheck.allowed) {
           const remainingSecs = Math.ceil(rateLimitCheck.remainingMs / 1000);
@@ -564,7 +554,7 @@ export function setupLobbyHandlers(io: Server): void {
           return;
         }
 
-        // Fetch existing headlines for context
+        // fetch existing headlines for context
         const existingHeadlinesResult = await pool.query(
           `SELECT id, COALESCE(selected_headline, headline_text) as text
            FROM game_session_headlines
@@ -577,17 +567,16 @@ export function setupLobbyHandlers(io: Server): void {
           text: row.text,
         }));
 
-        // Get planet list
         const planetList = getDefaultPlanets();
 
-        // Call transformation service (LLM evaluation + dice roll)
+        // call transformation service (llm evaluation + dice roll)
         const transformResult = await transformHeadline({
           storyDirection,
           headlinesList,
           planetList,
         });
 
-        // Insert headline with all transformation data
+        // insert headline with all transformation data
         const insertResult = await pool.query(
           `INSERT INTO game_session_headlines (
             session_id, player_id, round_no, headline_text,
@@ -642,10 +631,9 @@ export function setupLobbyHandlers(io: Server): void {
 
         const insertedRow = insertResult.rows[0];
 
-        // Record submission for rate limiting
         recordHeadlineSubmission(sessionState.id, playerId);
 
-        // Build headline event payload
+        // build headline event payload
         const headlineEvent = {
           id: insertedRow.id,
           sessionId: sessionState.id,
@@ -666,11 +654,10 @@ export function setupLobbyHandlers(io: Server): void {
             : null,
         };
 
-        // Broadcast to all players in the session
+        // broadcast to all players in the session
         const roomName = getRoomName(joinCode);
         io.to(roomName).emit('headline:new', headlineEvent);
 
-        // Respond to submitter
         callback?.({
           success: true,
           headline: headlineEvent,
@@ -689,7 +676,7 @@ export function setupLobbyHandlers(io: Server): void {
           `  >> Selected:         ${transformResult.selectedHeadline}`
         );
 
-        // Apply scoring asynchronously (don't block the response)
+        // apply scoring asynchronously (don't block the response)
         try {
           const uniqueOtherAuthors = await deriveUniqueOtherAuthorCount(
             transformResult.linked,
@@ -708,10 +695,9 @@ export function setupLobbyHandlers(io: Server): void {
             roundNo: sessionState.currentRound,
           });
 
-          // Fetch updated score breakdowns for all players
           const updatedBreakdowns = await getPlayerScoreBreakdowns(sessionState.id);
 
-          // Broadcast updated leaderboard with breakdowns
+          // broadcast updated leaderboard with breakdowns
           io.to(roomName).emit('leaderboard:update', {
             leaderboard: scoringResult.leaderboard.map((entry) => ({
               ...entry,
@@ -738,7 +724,7 @@ export function setupLobbyHandlers(io: Server): void {
           );
         } catch (scoringError) {
           console.error('Error applying scoring:', scoringError);
-          // Don't fail the headline submission if scoring fails
+          // don't fail the headline submission if scoring fails
         }
       } catch (error) {
         console.error('Error in headline:submit:', error);
@@ -750,7 +736,7 @@ export function setupLobbyHandlers(io: Server): void {
     });
 
     /**
-     * Get headlines for a session (feed loading)
+     * get headlines for a session (feed loading)
      */
     socket.on('headline:get_feed', async (data: { joinCode: string; roundNo?: number }, callback) => {
       try {
@@ -764,7 +750,7 @@ export function setupLobbyHandlers(io: Server): void {
           return;
         }
 
-        // Get session to verify it exists and get session ID
+        // verify session exists
         const sessionState = await getSessionState(joinCode);
         if (!sessionState) {
           callback?.({
@@ -774,7 +760,7 @@ export function setupLobbyHandlers(io: Server): void {
           return;
         }
 
-        // Build query - optionally filter by round
+        // build query - optionally filter by round
         let query = `
           SELECT
             h.id,
@@ -861,7 +847,7 @@ export function setupLobbyHandlers(io: Server): void {
     });
 
     /**
-     * Get round summary (for reconnecting clients)
+     * get round summary (for reconnecting clients)
      */
     socket.on('round:get_summary', async (data: { joinCode: string; roundNo: number }, callback) => {
       try {
@@ -875,7 +861,6 @@ export function setupLobbyHandlers(io: Server): void {
           return;
         }
 
-        // Get session ID from join code
         const sessionId = await getSessionIdFromJoinCode(joinCode);
         if (!sessionId) {
           callback?.({
@@ -885,7 +870,6 @@ export function setupLobbyHandlers(io: Server): void {
           return;
         }
 
-        // Get the summary
         const summaryData = await getRoundSummary(sessionId, roundNo);
 
         if (!summaryData) {

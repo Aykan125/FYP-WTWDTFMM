@@ -1,13 +1,13 @@
 /**
- * Planet definitions for the Future Headlines game.
- * Planets represent thematic categories for headlines, themed around Greek/Roman gods.
+ * planet definitions for the future headlines game.
+ * planets represent thematic categories for headlines, themed around greek/roman gods.
  */
 
 import { PlanetEntry } from '../llm/jurorPrompt.js';
 
 /**
- * Default planet list for the game.
- * Each planet represents a different aspect or domain of AI development and impact.
+ * default planet list for the game.
+ * each planet represents a different aspect or domain of ai development and impact.
  */
 export const DEFAULT_PLANETS: PlanetEntry[] = [
   {
@@ -58,21 +58,21 @@ export const DEFAULT_PLANETS: PlanetEntry[] = [
 ];
 
 /**
- * Get the default planet list.
+ * get the default planet list.
  */
 export function getDefaultPlanets(): PlanetEntry[] {
   return DEFAULT_PLANETS;
 }
 
 /**
- * Get a planet by ID.
+ * get a planet by id.
  */
 export function getPlanetById(id: string): PlanetEntry | undefined {
   return DEFAULT_PLANETS.find((p) => p.id === id);
 }
 
 /**
- * Get planet IDs only.
+ * get planet ids only.
  */
 export function getPlanetIds(): string[] {
   return DEFAULT_PLANETS.map((p) => p.id);

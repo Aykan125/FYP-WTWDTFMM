@@ -23,14 +23,13 @@ function App() {
 
   const { connected, sessionState, headlines, roundSummary, finalSummary, joinLobby, leaveLobby, startGame, submitHeadline, loadHeadlines, requestSummary, requestFinalSummary } = useSocket();
 
-  // Load session from localStorage on mount
+  // load session from localstorage on mount
   useEffect(() => {
     const stored = localStorage.getItem('futureHeadlines_session');
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
-        // Only auto-rejoin if user is NOT on a /join/:joinCode page
-        // (so clicking a new invite link isn't blocked by an old session)
+        // skip auto-rejoin on /join/:joinCode so a new invite link isn't blocked by an old session
         const isJoinPage = window.location.pathname.startsWith('/join/');
         if (!isJoinPage && parsed.joinCode && parsed.playerId) {
           setSessionData(parsed);
@@ -45,14 +44,12 @@ function App() {
     setInitialized(true);
   }, []);
 
-  // Persist sessionData to localStorage
+  // persist sessiondata to localstorage
   useEffect(() => {
     if (sessionData) {
       localStorage.setItem('futureHeadlines_session', JSON.stringify(sessionData));
     }
   }, [sessionData]);
-
-  // ─── Handlers ───
 
   const handleCreateSession = async () => {
     if (!nickname.trim()) {
@@ -111,7 +108,7 @@ function App() {
 
       if (!response.ok) {
         const errData = await response.json();
-        // If game already started, try to recover existing player by nickname
+        // if game already started, try to recover existing player by nickname
         if (response.status === 400 && errData.error === 'Cannot join session') {
           const rejoinResponse = await fetch(`${API_URL}/api/sessions/${code}/rejoin`, {
             method: 'POST',
@@ -182,21 +179,21 @@ function App() {
     return submitHeadline(sessionData.joinCode, headline);
   };
 
-  // Load headlines when phase changes to PLAYING
+  // load headlines when phase changes to playing
   useEffect(() => {
     if (sessionState?.phase === 'PLAYING' && sessionData?.joinCode) {
       loadHeadlines(sessionData.joinCode);
     }
   }, [sessionState?.phase, sessionData?.joinCode, loadHeadlines]);
 
-  // Request round summary on reconnect during BREAK
+  // request round summary on reconnect during break
   useEffect(() => {
     if (sessionState?.phase === 'BREAK' && sessionData?.joinCode && !roundSummary) {
       requestSummary(sessionData.joinCode, sessionState.currentRound);
     }
   }, [sessionState?.phase, sessionState?.currentRound, sessionData?.joinCode, roundSummary, requestSummary]);
 
-  // Request final narrative summary on FINISHED and load all headlines for game-end stats
+  // request final narrative summary on finished and load all headlines for game-end stats
   useEffect(() => {
     if (sessionState?.phase === 'FINISHED' && sessionData?.joinCode) {
       if (!finalSummary) {
@@ -206,7 +203,6 @@ function App() {
     }
   }, [sessionState?.phase, sessionState?.currentRound, sessionData?.joinCode, finalSummary, requestFinalSummary, loadHeadlines]);
 
-  // ─── Loading spinner (shared) ───
   const loadingScreen = (
     <div className="h-[100dvh] overflow-hidden bg-gradient-to-b from-gray-50 to-gray-100/80 flex items-center justify-center">
       <div className="text-center">
@@ -216,7 +212,6 @@ function App() {
     </div>
   );
 
-  // ─── Lobby element (host or joiner) ───
   const lobbyElement = !initialized ? (
     loadingScreen
   ) : !sessionData ? (
@@ -269,28 +264,22 @@ function App() {
     loadingScreen
   );
 
-  // ─── Routes ───
   return (
     <Routes>
-      {/* Home – create a new game */}
       <Route path="/" element={
         <div className="h-[100dvh] overflow-hidden bg-gradient-to-b from-gray-50 to-gray-100/80 flex items-center justify-center p-4">
           <div className="max-w-sm w-full space-y-6">
-            {/* Title */}
             <div className="text-center space-y-1">
               <h1 className="text-4xl font-bold text-gray-900">Future Headlines</h1>
               <p className="text-sm text-gray-500">Create a game and invite players with a link</p>
             </div>
 
-            {/* Connection status */}
             <div className="flex items-center justify-center gap-2">
               <div className={`w-2 h-2 rounded-full ${connected ? 'bg-emerald-400' : 'bg-red-400'}`} />
               <span className="text-xs text-gray-500">{connected ? 'Connected' : 'Disconnected'}</span>
             </div>
 
-            {/* Main card */}
             <Card padding="lg" className="space-y-5">
-              {/* Nickname */}
               <div>
                 <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5">
                   Nickname
@@ -306,14 +295,12 @@ function App() {
                 />
               </div>
 
-              {/* Error */}
               {error && (
                 <div className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">
                   {error}
                 </div>
               )}
 
-              {/* Create */}
               <Button
                 fullWidth
                 size="lg"
@@ -331,7 +318,6 @@ function App() {
         </div>
       } />
 
-      {/* Join by link */}
       <Route path="/join/:joinCode" element={
         <JoinByLinkPage
           connected={connected}
@@ -341,10 +327,8 @@ function App() {
         />
       } />
 
-      {/* Lobby / Game */}
       <Route path="/lobby/:joinCode" element={lobbyElement} />
 
-      {/* Catch-all redirect */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

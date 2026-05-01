@@ -34,7 +34,7 @@ interface GameLayoutProps {
   currentGameMins: number;
   onSubmitHeadline: (headline: string) => Promise<{ success: boolean; error?: string; cooldownMs?: number }>;
   onBack: () => void;
-  /* Lobby-specific slots */
+  /* lobby-specific slot */
   lobbyContent?: React.ReactNode;
 }
 
@@ -73,10 +73,9 @@ export function GameLayout({
 
   return (
     <div className="h-[100dvh] overflow-hidden flex flex-col bg-gradient-to-b from-gray-50 to-gray-100/80">
-      {/* ─── Top HUD bar ─── */}
       <header className="shrink-0 z-20 bg-white/80 backdrop-blur border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-4 py-2 flex items-center justify-between gap-4">
-          {/* Left: session code + leave */}
+          {/* left: session code + leave */}
           <div className="flex items-center gap-3">
             <button
               onClick={onBack}
@@ -90,7 +89,7 @@ export function GameLayout({
             <Badge variant="default">{joinCode}</Badge>
           </div>
 
-          {/* Center: game status */}
+          {/* center: game status */}
           {inGame && (
             <div className="flex-1 flex justify-center">
               <GameStatus
@@ -104,12 +103,11 @@ export function GameLayout({
             </div>
           )}
 
-          {/* Right: personal score */}
+          {/* right: personal score */}
           {inGame && <PersonalScore score={myScore} />}
         </div>
       </header>
 
-      {/* ─── WAITING: render lobby content ─── */}
       {isWaiting && (
         <main className="flex-1 min-h-0 overflow-y-auto">
           <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
@@ -127,7 +125,6 @@ export function GameLayout({
         </main>
       )}
 
-      {/* ─── FINISHED: render game end page ─── */}
       {isFinished && (
         <GameEnd
           joinCode={joinCode}
@@ -142,12 +139,10 @@ export function GameLayout({
         />
       )}
 
-      {/* ─── IN-GAME: 3-column grid ─── */}
       {inGame && (
         <main className="flex-1 min-h-0 overflow-hidden">
-          {/* Desktop layout */}
+          {/* desktop layout */}
           <div className="hidden lg:grid lg:grid-cols-[240px_1fr_320px] gap-4 h-full max-w-7xl mx-auto px-4 py-4">
-            {/* ── Left sidebar ── */}
             <aside className="min-h-0 flex flex-col pr-1">
               <div className="flex-1 min-h-0 overflow-y-auto">
                 <ScoreBarChart
@@ -165,7 +160,6 @@ export function GameLayout({
               </div>
             </aside>
 
-            {/* ── Center: feed + input ── */}
             <section className="flex flex-col min-h-0">
               <div className="flex-1 min-h-0 overflow-hidden">
                 <HeadlineFeed
@@ -185,7 +179,6 @@ export function GameLayout({
               )}
             </section>
 
-            {/* ── Right sidebar ── */}
             <aside className="min-h-0 flex flex-col pl-1">
               {phase === 'BREAK' && roundSummary && (
                 <RoundSummary summary={roundSummary} roundNo={currentRound} />
@@ -193,7 +186,7 @@ export function GameLayout({
             </aside>
           </div>
 
-          {/* ── Mobile layout ── */}
+          {/* mobile layout */}
           <div className="lg:hidden flex flex-col h-full">
             <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-4">
               <div className="grid grid-cols-2 gap-3">

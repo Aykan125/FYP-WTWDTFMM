@@ -5,7 +5,7 @@ const CODE_LENGTH = 6;
 const MAX_RETRIES = 3;
 
 /**
- * Generates a random alphanumeric code
+ * generates a random alphanumeric code
  */
 function generateRandomCode(): string {
   let code = '';
@@ -17,7 +17,7 @@ function generateRandomCode(): string {
 }
 
 /**
- * Checks if a join code already exists in the database
+ * checks if a join code already exists in the database
  */
 async function isCodeUnique(code: string): Promise<boolean> {
   const result = await pool.query(
@@ -28,20 +28,20 @@ async function isCodeUnique(code: string): Promise<boolean> {
 }
 
 /**
- * Generates a unique join code, retrying if necessary
+ * generates a unique join code, retrying if necessary
  */
 export async function generateUniqueJoinCode(): Promise<string> {
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     const code = generateRandomCode();
     const unique = await isCodeUnique(code);
-    
+
     if (unique) {
       return code;
     }
-    
+
     console.warn(`Join code collision detected: ${code}, retrying...`);
   }
-  
+
   throw new Error('Failed to generate unique join code after max retries');
 }
 
