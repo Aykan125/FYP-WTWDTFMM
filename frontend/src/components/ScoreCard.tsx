@@ -47,10 +47,6 @@ export function ScoreCard({ phase }: ScoreCardProps) {
           <span className="text-violet-400">Planet — middle 3</span>
           <span className="text-violet-500 font-semibold">+1</span>
         </div>
-        <div className="flex justify-between">
-          <span className="text-violet-400">Planet — most used (bottom 3)</span>
-          <span className="text-violet-500 font-semibold">+0</span>
-        </div>
       </div>
     </Card>
   );
