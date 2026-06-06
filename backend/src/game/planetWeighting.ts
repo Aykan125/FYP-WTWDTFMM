@@ -1,11 +1,13 @@
 /**
+ * DEPRECATED — replaced by planetUsage.ts (band-based global planet usage system).
+ *
+ * This module implemented the old per-player "priority planet" system: each player
+ * had a single priority planet and earned a flat +2 bonus when it appeared in the
+ * AI's top-3. It is no longer wired into the scoring path or any socket payload.
+ * Retained (unreferenced) for reference and quick rollback; remove in a later cleanup.
+ *
  * planet weighting and frequency-based tally logic for the scoring system.
  * implements per-player planet priority tracking with tally-based selection.
- *
- * the concept: each player has a "priority planet" selected from the planets
- * with the lowest appearance count (least frequently appearing in ai evaluations).
- * if the ai's classification includes the priority planet in the top-3,
- * the player gets a flat bonus.
  */
 
 import {

@@ -1,11 +1,22 @@
 import { useEffect, useRef, useState } from 'react';
 import { Headline } from '../hooks/useSocket';
 import { Card, SectionTitle } from './ui';
+import { PLANET_COLORS } from '../lib/planets';
 
 interface HeadlineFeedProps {
   headlines: Headline[];
   currentPlayerId: string;
 }
+
+// typography by plausibility band of the displayed variant: mundane/inevitable
+// headlines read small and light; surprising/preposterous ones are large and bold.
+const BAND_TEXT: Record<number, string> = {
+  1: 'text-xs font-normal text-gray-600',
+  2: 'text-sm font-normal text-gray-700',
+  3: 'text-sm font-medium text-gray-800',
+  4: 'text-base font-semibold text-gray-900',
+  5: 'text-lg font-bold text-gray-900',
+};
 
 export function HeadlineFeed({ headlines, currentPlayerId }: HeadlineFeedProps) {
   const feedRef = useRef<HTMLDivElement>(null);
@@ -135,22 +146,12 @@ export function HeadlineFeed({ headlines, currentPlayerId }: HeadlineFeedProps) 
 
           const hasScore = headline.totalScore != null;
           const primaryPlanet = headline.planets?.[0];
+          const planetColor = !isArchive && primaryPlanet ? PLANET_COLORS[primaryPlanet] : null;
 
-          const PLANET_BORDER: Record<string, string> = {
-            EARTH: 'border-l-green-300',
-            MARS: 'border-l-red-300',
-            MERCURY: 'border-l-cyan-300',
-            VENUS: 'border-l-pink-300',
-            JUPITER: 'border-l-orange-300',
-            SATURN: 'border-l-yellow-300',
-            NEPTUNE: 'border-l-blue-300',
-            URANUS: 'border-l-teal-300',
-            PLUTO: 'border-l-purple-300',
-          };
-
-          const planetBorder = !isArchive && primaryPlanet
-            ? `border-l-2 ${PLANET_BORDER[primaryPlanet] ?? ''}`
-            : '';
+          const planetBorder = planetColor ? `border-l-4 ${planetColor.borderL}` : '';
+          const bandText = headline.selectedBand
+            ? BAND_TEXT[headline.selectedBand] ?? 'text-sm font-medium text-gray-800'
+            : 'text-sm text-gray-800';
 
           return (
             <div
@@ -164,10 +165,16 @@ export function HeadlineFeed({ headlines, currentPlayerId }: HeadlineFeedProps) 
               }`}
             >
               <div className="flex justify-between items-center mb-1">
-                <span className={`text-xs font-medium ${isArchive ? 'text-amber-600' : isOwn ? 'text-indigo-600' : 'text-gray-500'}`}>
+                <span className={`flex items-center gap-1.5 text-xs font-medium ${isArchive ? 'text-amber-600' : isOwn ? 'text-indigo-600' : 'text-gray-500'}`}>
                   {headline.playerNickname}
-                  {isArchive && <span className="ml-1 text-amber-400">(history)</span>}
-                  {!isArchive && isOwn && <span className="ml-1 text-gray-400">(you)</span>}
+                  {isArchive && <span className="text-amber-400">(history)</span>}
+                  {!isArchive && isOwn && <span className="text-gray-400">(you)</span>}
+                  {planetColor && (
+                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${planetColor.bg} ${planetColor.text}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${planetColor.dot}`} />
+                      {primaryPlanet}
+                    </span>
+                  )}
                 </span>
                 <span className="text-[11px] font-semibold text-gray-600">
                   R{headline.roundNo} &middot; {headline.inGameSubmittedAt
@@ -175,7 +182,7 @@ export function HeadlineFeed({ headlines, currentPlayerId }: HeadlineFeedProps) 
                     : ''}
                 </span>
               </div>
-              <p className="text-sm text-gray-800 leading-relaxed">
+              <p className={`${bandText} leading-relaxed`}>
                 &ldquo;{headline.text}&rdquo;
               </p>
               {hasScore && (

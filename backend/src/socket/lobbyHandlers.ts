@@ -7,9 +7,16 @@ import { transformHeadline, LinkedHeadline } from '../game/headlineTransformatio
 import { getDefaultPlanets } from '../game/planets.js';
 import { HeadlineEntry } from '../llm/jurorPrompt.js';
 import { applyHeadlineEvaluation, getPlayerScoreBreakdowns } from '../game/scoringService.js';
-import { PlausibilityLevel, DEFAULT_PLANETS } from '../game/scoringTypes.js';
-import { migratePlanetState, initialPlanetTallyState, selectPriorityPlanet } from '../game/planetWeighting.js';
+import { PlausibilityLevel, DEFAULT_PLANETS, PlanetPanelEntry } from '../game/scoringTypes.js';
+import {
+  migrateGlobalUsage,
+  migratePlayerOrdinals,
+  computePlanetPanel,
+  randomOrdinals,
+  initialGlobalUsage,
+} from '../game/planetUsage.js';
 import { getRoundSummary, getSessionIdFromJoinCode } from '../game/summaryService.js';
+import { computeInGameNow } from '../game/inGameTime.js';
 
 
 // rate limiting: track last submission time per player.
@@ -136,7 +143,7 @@ interface SessionState {
     isHost: boolean;
     joinedAt: string;
     totalScore?: number;
-    priorityPlanet?: string | null;
+    planetPanel?: PlanetPanelEntry[];
     scoreBreakdown?: {
       baseline: number;
       plausibility: number;
@@ -166,6 +173,7 @@ async function getSessionState(joinCode: string): Promise<SessionState | null> {
         s.phase_ends_at,
         s.in_game_start_at,
         s.timeline_speed_ratio,
+        s.planet_usage_global,
         CURRENT_TIMESTAMP as server_now,
         json_agg(
           json_build_object(
@@ -192,22 +200,21 @@ async function getSessionState(joinCode: string): Promise<SessionState | null> {
     const serverNow = new Date(session.server_now);
 
     // compute in-game time
-    let inGameNow: Date | null = null;
-    if (session.in_game_start_at && session.phase_started_at) {
-      const inGameStart = new Date(session.in_game_start_at);
-      const phaseStart = new Date(session.phase_started_at);
-      const realElapsed = serverNow.getTime() - phaseStart.getTime();
-      const inGameElapsed = realElapsed * session.timeline_speed_ratio;
-      inGameNow = new Date(inGameStart.getTime() + inGameElapsed);
-    }
+    const inGameNow = computeInGameNow(
+      session.in_game_start_at,
+      session.phase_started_at,
+      session.phase_ends_at,
+      serverNow,
+      session.timeline_speed_ratio
+    );
 
     const breakdowns = await getPlayerScoreBreakdowns(session.id);
+    const globalUsage = migrateGlobalUsage(session.planet_usage_global, DEFAULT_PLANETS);
 
-    // extract currentPriority from each player's planet state
+    // build each player's usage-ranked planet panel
     const processedPlayers = session.players
       .filter((p: any) => p.id !== null)
       .map((p: any) => {
-        const planetState = migratePlanetState(p.planetUsageState, DEFAULT_PLANETS);
         const bd = breakdowns.get(p.id);
         return {
           id: p.id,
@@ -215,7 +222,11 @@ async function getSessionState(joinCode: string): Promise<SessionState | null> {
           isHost: p.isHost,
           joinedAt: p.joinedAt,
           totalScore: p.totalScore ?? 0,
-          priorityPlanet: planetState.currentPriority,
+          planetPanel: computePlanetPanel(
+            globalUsage,
+            migratePlayerOrdinals(p.planetUsageState, DEFAULT_PLANETS),
+            DEFAULT_PLANETS
+          ),
           scoreBreakdown: bd ?? { baseline: 0, plausibility: 0, connection: 0, planetBonus: 0 },
         };
       });
@@ -407,21 +418,21 @@ export function setupLobbyHandlers(io: Server): void {
           return;
         }
 
-        // initialize planet state for all players before starting the game
-        for (const player of sessionState.players) {
-          const initialState = initialPlanetTallyState(DEFAULT_PLANETS);
-          // pick a random initial priority planet
-          const initialPriority = selectPriorityPlanet(initialState, DEFAULT_PLANETS);
-          const stateWithPriority = {
-            ...initialState,
-            currentPriority: initialPriority,
-          };
+        // initialize the session's global planet usage (all zeros)
+        await pool.query(
+          `UPDATE game_sessions
+           SET planet_usage_global = $1
+           WHERE id = $2 AND (planet_usage_global = '{}' OR planet_usage_global IS NULL)`,
+          [JSON.stringify(initialGlobalUsage(DEFAULT_PLANETS)), sessionState.id]
+        );
 
+        // give each player their own stable random planet ordering (tie-break for the usage panel)
+        for (const player of sessionState.players) {
           await pool.query(
             `UPDATE session_players
              SET planet_usage_state = $1
              WHERE id = $2 AND (planet_usage_state = '{}' OR planet_usage_state IS NULL)`,
-            [JSON.stringify(stateWithPriority), player.id]
+            [JSON.stringify(randomOrdinals(DEFAULT_PLANETS)), player.id]
           );
         }
 
@@ -710,7 +721,6 @@ export function setupLobbyHandlers(io: Server): void {
               playerId,
               breakdown: scoringResult.breakdown,
               newTotalScore: scoringResult.newTotalScore,
-              updatedPriorityPlanet: scoringResult.updatedPriorityPlanet,
             },
           });
 

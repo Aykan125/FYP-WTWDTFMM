@@ -15,22 +15,24 @@ import {
   DEFAULT_PLANETS,
 } from './scoringTypes.js';
 import {
-  PlanetTallyState,
-  applyPlanetScoringAndUsage,
-  migratePlanetState,
-} from './planetWeighting.js';
+  migrateGlobalUsage,
+  migratePlayerOrdinals,
+  applyGlobalPlanetScoring,
+  computePlanetPanel,
+} from './planetUsage.js';
 import { computeHeadlineScore } from './scoring.js';
 
 /**
  * raw player row from database.
- * note: planet_usage_state can be in legacy lru format or new tally format.
+ * note: planet_usage_state now holds the per-player ordinal permutation;
+ * coerce it with migratePlayerOrdinals.
  */
 interface PlayerRow {
   id: string;
   session_id: string;
   nickname: string;
   total_score: number;
-  planet_usage_state: unknown;  // can be legacy or new format, use migratePlanetState
+  planet_usage_state: unknown;  // per-player ordinals, use migratePlayerOrdinals
 }
 
 /**
@@ -145,19 +147,19 @@ export async function applyHeadlineEvaluation(
       );
     }
 
-    // migrate and initialize planet state (handles legacy lru and new tally formats)
-    const planetState: PlanetTallyState = migratePlanetState(
-      player.planet_usage_state,
+    // load global planet usage; lock the session row to serialize concurrent submissions
+    const usageResult = await client.query<{ planet_usage_global: unknown }>(
+      `SELECT planet_usage_global FROM game_sessions WHERE id = $1 FOR UPDATE`,
+      [sessionId]
+    );
+    const globalUsage = migrateGlobalUsage(
+      usageResult.rows[0]?.planet_usage_global,
       DEFAULT_PLANETS
     );
 
-    // calculate planet scoring and update state
-    const planetResult = applyPlanetScoringAndUsage(
-      planetState,
-      aiPlanetRankings,
-      roundNo,
-      config
-    );
+    // band-based planet scoring: bonus from the primary planet's global band, +1 to its usage.
+    // band membership is global (shared across players), so it does not use this player's ordinals.
+    const planetResult = applyGlobalPlanetScoring(globalUsage, aiPlanetRankings, DEFAULT_PLANETS);
 
     // calculate complete headline score.
     // selectedBand (dice roll result) is used for plausibility scoring
@@ -211,24 +213,33 @@ export async function applyHeadlineEvaluation(
       ]
     );
 
-    // update player's total score and planet usage state
+    // update player's total score (ordinals are immutable, so not rewritten here)
     const newTotalScore = player.total_score + breakdown.total;
 
     await client.query(
       `UPDATE session_players
-       SET total_score = $1,
-           planet_usage_state = $2
-       WHERE id = $3`,
-      [newTotalScore, JSON.stringify(planetResult.updatedState), playerId]
+       SET total_score = $1
+       WHERE id = $2`,
+      [newTotalScore, playerId]
     );
 
-    // get updated leaderboard
+    // persist the updated global planet usage
+    await client.query(
+      `UPDATE game_sessions
+       SET planet_usage_global = $1
+       WHERE id = $2`,
+      [JSON.stringify(planetResult.updatedUsage), sessionId]
+    );
+
+    // get updated leaderboard, including each player's ordinals so we can
+    // recompute their planet panel against the new global usage
     const leaderboardResult = await client.query<{
       id: string;
       nickname: string;
       total_score: number;
+      planet_usage_state: unknown;
     }>(
-      `SELECT id, nickname, total_score
+      `SELECT id, nickname, total_score, planet_usage_state
        FROM session_players
        WHERE session_id = $1 AND is_system = FALSE
        ORDER BY total_score DESC, joined_at ASC`,
@@ -241,6 +252,11 @@ export async function applyHeadlineEvaluation(
         nickname: row.nickname,
         totalScore: row.total_score,
         rank: index + 1,
+        planetPanel: computePlanetPanel(
+          planetResult.updatedUsage,
+          migratePlayerOrdinals(row.planet_usage_state, DEFAULT_PLANETS),
+          DEFAULT_PLANETS
+        ),
       })
     );
 
@@ -250,7 +266,6 @@ export async function applyHeadlineEvaluation(
       breakdown,
       newTotalScore,
       leaderboard,
-      updatedPriorityPlanet: planetResult.updatedState.currentPriority,
     };
   } catch (error) {
     await client.query('ROLLBACK');
@@ -370,26 +385,4 @@ export async function getPlayerScoreBreakdowns(
     });
   }
   return map;
-}
-
-/**
- * get player's current planet state.
- * handles migration from legacy lru format to new tally format.
- *
- * @param playerId - player id
- * @returns planet tally state (migrated if necessary)
- */
-export async function getPlayerPlanetState(
-  playerId: string
-): Promise<PlanetTallyState> {
-  const result = await pool.query<{ planet_usage_state: unknown }>(
-    `SELECT planet_usage_state FROM session_players WHERE id = $1`,
-    [playerId]
-  );
-
-  if (result.rows.length === 0) {
-    return migratePlanetState(null, DEFAULT_PLANETS);
-  }
-
-  return migratePlanetState(result.rows[0].planet_usage_state, DEFAULT_PLANETS);
 }

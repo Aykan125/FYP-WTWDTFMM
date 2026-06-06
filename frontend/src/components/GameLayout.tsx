@@ -4,14 +4,14 @@ import { PersonalScore } from './PersonalScore';
 import { ScoreBarChart } from './ScoreBarChart';
 import { HeadlineFeed } from './HeadlineFeed';
 import { HeadlineInput } from './HeadlineInput';
-import { PriorityPlanet } from './PriorityPlanet';
+import { PlanetUsagePanel } from './PlanetUsagePanel';
 import { InGameDate } from './InGameDate';
 import { RoundSummary } from './RoundSummary';
 import { ScoreCard } from './ScoreCard';
 import { GameEnd } from './GameEnd';
 import { PlayerList } from './PlayerList';
 import { Badge } from './ui';
-import { Headline, RoundSummary as RoundSummaryType, FinalSummary } from '../hooks/useSocket';
+import { Headline, RoundSummary as RoundSummaryType, FinalSummary, PlanetPanelEntry } from '../hooks/useSocket';
 import { useInGameNow } from '../hooks/useInGameNow';
 
 interface GameLayoutProps {
@@ -28,7 +28,7 @@ interface GameLayoutProps {
   headlines: Headline[];
   roundSummary: RoundSummaryType | null;
   finalSummary: FinalSummary | null;
-  priorityPlanet: string | null;
+  planetPanel: PlanetPanelEntry[] | null;
   myScore: number;
   totalGameMins: number;
   currentGameMins: number;
@@ -52,7 +52,7 @@ export function GameLayout({
   headlines,
   roundSummary,
   finalSummary,
-  priorityPlanet,
+  planetPanel,
   myScore,
   totalGameMins,
   currentGameMins,
@@ -154,7 +154,6 @@ export function GameLayout({
                 />
               </div>
               <div className="shrink-0 pt-3 pb-[env(safe-area-inset-bottom)] space-y-2">
-                <PriorityPlanet planet={priorityPlanet} />
                 <InGameDate inGameNow={derivedInGameNow} />
                 <ScoreCard phase={phase} />
               </div>
@@ -180,8 +179,10 @@ export function GameLayout({
             </section>
 
             <aside className="min-h-0 flex flex-col pl-1">
-              {phase === 'BREAK' && roundSummary && (
+              {phase === 'BREAK' && roundSummary ? (
                 <RoundSummary summary={roundSummary} roundNo={currentRound} />
+              ) : (
+                <PlanetUsagePanel panel={planetPanel} />
               )}
             </aside>
           </div>
@@ -189,10 +190,8 @@ export function GameLayout({
           {/* mobile layout */}
           <div className="lg:hidden flex flex-col h-full">
             <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <PriorityPlanet planet={priorityPlanet} />
-                <InGameDate inGameNow={derivedInGameNow} />
-              </div>
+              <InGameDate inGameNow={derivedInGameNow} />
+              {phase !== 'BREAK' && <PlanetUsagePanel panel={planetPanel} />}
               <HeadlineFeed
                 headlines={headlines}
                 currentPlayerId={currentPlayerId}

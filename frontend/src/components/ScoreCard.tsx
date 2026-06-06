@@ -40,8 +40,16 @@ export function ScoreCard({ phase }: ScoreCardProps) {
         </div>
         <div className="border-t border-gray-100 my-1" />
         <div className="flex justify-between">
-          <span className="text-violet-500">Planet bonus</span>
+          <span className="text-violet-500">Planet — least used (top 3)</span>
           <span className="text-violet-600 font-semibold">+2</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-violet-400">Planet — middle 3</span>
+          <span className="text-violet-500 font-semibold">+1</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-violet-400">Planet — most used (bottom 3)</span>
+          <span className="text-violet-500 font-semibold">+0</span>
         </div>
       </div>
     </Card>

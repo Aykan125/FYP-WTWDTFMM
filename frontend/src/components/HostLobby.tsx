@@ -57,7 +57,7 @@ export function HostLobby({
   });
 
   const currentPlayer = players.find((p) => p.id === currentPlayerId);
-  const priorityPlanet = currentPlayer?.priorityPlanet ?? null;
+  const planetPanel = currentPlayer?.planetPanel ?? null;
   const myScore = currentPlayer?.totalScore ?? 0;
 
   const inviteLink = `${window.location.origin}/join/${joinCode}`;
@@ -117,7 +117,7 @@ export function HostLobby({
       headlines={headlines}
       roundSummary={roundSummary}
       finalSummary={finalSummary}
-      priorityPlanet={priorityPlanet}
+      planetPanel={planetPanel}
       myScore={myScore}
       totalGameMins={totalGameMins}
       currentGameMins={currentGameMins}

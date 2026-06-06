@@ -18,7 +18,7 @@ export const summaryJsonSchema: JsonSchemaDefinition = {
     properties: {
       narrative: {
         type: 'string',
-        description: '2-3 paragraph narrative summary of events as if they really happened',
+        description: '2 short paragraph narrative summary of events as if they really happened',
       },
       themes: {
         type: 'array',
@@ -115,7 +115,7 @@ ${formattedHeadlines}
 === YOUR TASK ===
 Create a narrative summary as if these headlines represent REAL EVENTS that have happened in this alternate future timeline. Write as a historian or journalist recapping actual news, NOT as a game show host discussing player submissions.
 
-1. **Narrative**: Write 2-3 paragraphs summarizing the events as if they actually occurred. Weave the headlines together into a coherent story of what happened in this period. Use phrases like "This period saw...", "Major developments included...", "The world witnessed...", etc. Do NOT mention players, submissions, or the game itself.
+1. **Narrative**: Write 2 short paragraphs summarizing the events as if they actually occurred. Keep it concise and tight. Weave the headlines together into a coherent story of what happened in this period. Use phrases like "This period saw...", "Major developments included...", "The world witnessed...", etc. Do NOT mention players, submissions, or the game itself.
 
 2. **Themes**: Identify the top 3 themes that emerged (e.g., "AI in Healthcare", "Robot Rights", "Space Colonization").
 
@@ -141,6 +141,6 @@ Your role is to create immersive narrative summaries that:
 - NEVER mention players, game mechanics, submissions, or creativity
 
 Write as if you're a journalist or documentarian looking back at this period in history.
-Keep the narrative to 2-3 paragraphs.
+Keep the narrative to 2 short paragraphs — concise and tight, not exhaustive.
 Always output valid JSON matching the required schema.`;
 }

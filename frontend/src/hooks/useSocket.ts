@@ -10,13 +10,20 @@ export interface ScoreBreakdown {
   planetBonus: number;
 }
 
+/** one row of a player's usage-ranked planet panel */
+export interface PlanetPanelEntry {
+  id: string;
+  usage: number;
+  band: 0 | 1 | 2;
+}
+
 export interface Player {
   id: string;
   nickname: string;
   isHost: boolean;
   joinedAt: string;
   totalScore?: number;
-  priorityPlanet?: string | null;
+  planetPanel?: PlanetPanelEntry[];
   scoreBreakdown?: ScoreBreakdown;
 }
 
@@ -45,6 +52,10 @@ export interface Headline {
   playerNickname: string;
   roundNo: number;
   text: string;
+  /** dice-rolled band of the displayed headline variant (1-5); drives typography */
+  selectedBand?: number | null;
+  /** ai-assessed plausibility band (1-5) */
+  plausibilityBand?: number | null;
   createdAt: string;
   inGameSubmittedAt: string | null;
   baselineScore?: number | null;
@@ -237,12 +248,11 @@ export function useSocket(): UseSocketReturn {
 
     // leaderboard updates (real-time score changes)
     socket.on('leaderboard:update', (data: {
-      leaderboard: { playerId: string; totalScore: number; scoreBreakdown?: ScoreBreakdown }[];
+      leaderboard: { playerId: string; totalScore: number; scoreBreakdown?: ScoreBreakdown; planetPanel?: PlanetPanelEntry[] }[];
       lastScoredHeadline?: {
         headlineId?: string;
         playerId: string;
         breakdown?: { baseline: number; plausibility: number; connectionScore: number; planetBonus: number; total: number };
-        updatedPriorityPlanet?: string | null;
       };
     }) => {
       console.log('Leaderboard updated:', data);
@@ -251,16 +261,12 @@ export function useSocket(): UseSocketReturn {
         const updatedPlayers = prev.players.map((p) => {
           const entry = data.leaderboard.find((e) => e.playerId === p.id);
           if (!entry) return p;
-          const newPlanet =
-            data.lastScoredHeadline?.playerId === p.id &&
-            data.lastScoredHeadline.updatedPriorityPlanet !== undefined
-              ? data.lastScoredHeadline.updatedPriorityPlanet
-              : p.priorityPlanet;
           return {
             ...p,
             totalScore: entry.totalScore,
             scoreBreakdown: entry.scoreBreakdown ?? p.scoreBreakdown,
-            priorityPlanet: newPlanet,
+            // a usage change re-ranks every player's panel
+            planetPanel: entry.planetPanel ?? p.planetPanel,
           };
         });
         return { ...prev, players: updatedPlayers };

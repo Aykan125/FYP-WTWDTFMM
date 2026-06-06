@@ -8,7 +8,6 @@ interface GameStatusProps {
   phaseEndsAt: string | null;
   serverNow: string;
   inGameNow: string | null;
-  priorityPlanet?: string | null;
 }
 
 export function GameStatus({

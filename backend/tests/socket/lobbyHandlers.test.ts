@@ -138,7 +138,8 @@ describe('Lobby Handlers - getSessionState', () => {
         totalScore: 0,
         scoreBreakdown: { baseline: 0, plausibility: 0, connection: 0, planetBonus: 0 },
       });
-      expect(result.state.players[0]).toHaveProperty('priorityPlanet');
+      expect(result.state.players[0]).toHaveProperty('planetPanel');
+      expect(result.state.players[0].planetPanel).toHaveLength(9);
     });
 
     it('should compute in-game time correctly based on timeline_speed_ratio', async () => {
@@ -318,15 +319,17 @@ describe('Lobby Handlers - getSessionState', () => {
 
       // Build ordered mock responses:
       // 1. getSessionState before (session query + breakdowns)
-      // 2. UPDATE planet state for each player (2 players)
-      // 3. INSERT Archive player
-      // 4. INSERT 36 seed headlines
-      // 5. getSessionState after (session query + breakdowns)
+      // 2. UPDATE global planet usage (session)
+      // 3. UPDATE planet ordinals for each player (2 players)
+      // 4. INSERT Archive player
+      // 5. INSERT 36 seed headlines
+      // 6. getSessionState after (session query + breakdowns)
       const orderedResponses = [
         { rows: [mockSessionData] }, // getSessionState before - session
         { rows: mockBreakdownRows(['player-1', 'player-2']) }, // getSessionState before - breakdowns
-        { rowCount: 1 }, // UPDATE planet state for player 1
-        { rowCount: 1 }, // UPDATE planet state for player 2
+        { rowCount: 1 }, // UPDATE global planet usage
+        { rowCount: 1 }, // UPDATE ordinals for player 1
+        { rowCount: 1 }, // UPDATE ordinals for player 2
         { rows: [{ id: 'archive-player-id' }] }, // INSERT Archive player
         ...Array(36).fill({ rowCount: 1 }), // 36 seed headline INSERTs
         { rows: [updatedSessionData] }, // getSessionState after - session

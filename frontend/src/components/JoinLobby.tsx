@@ -45,7 +45,7 @@ export function JoinLobby({
   onSubmitHeadline,
 }: JoinLobbyProps) {
   const currentPlayer = players.find((p) => p.id === currentPlayerId);
-  const priorityPlanet = currentPlayer?.priorityPlanet ?? null;
+  const planetPanel = currentPlayer?.planetPanel ?? null;
   const myScore = currentPlayer?.totalScore ?? 0;
 
   const { totalGameMins, currentGameMins } = useGameTimeProgress({
@@ -99,7 +99,7 @@ export function JoinLobby({
       headlines={headlines}
       roundSummary={roundSummary}
       finalSummary={finalSummary}
-      priorityPlanet={priorityPlanet}
+      planetPanel={planetPanel}
       myScore={myScore}
       totalGameMins={totalGameMins}
       currentGameMins={currentGameMins}

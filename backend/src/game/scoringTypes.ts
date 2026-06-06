@@ -28,6 +28,24 @@ export type ConnectionScoreType = 'OTHERS' | 'SELF' | 'NONE';
 export type PlanetId = string;
 
 /**
+ * planet usage band: scoring tier a planet sits in based on global usage rank.
+ * 2 = least-used (top) band, 1 = middle band, 0 = most-used (bottom) band.
+ */
+export type PlanetBand = 0 | 1 | 2;
+
+/**
+ * one row of the player-facing planet usage panel.
+ */
+export interface PlanetPanelEntry {
+  /** planet id */
+  id: PlanetId;
+  /** global usage count for this planet */
+  usage: number;
+  /** scoring band (+2 / +1 / +0) */
+  band: PlanetBand;
+}
+
+/**
  * default list of planets in the game.
  * can be extended or customized per game session.
  */
@@ -253,6 +271,8 @@ export interface PlayerScoreEntry {
   nickname: string;
   totalScore: number;
   rank: number;
+  /** this player's ordered planet usage panel (when computed during scoring) */
+  planetPanel?: PlanetPanelEntry[];
 }
 
 /**
@@ -270,6 +290,6 @@ export interface HeadlineEvaluationPayload extends HeadlineScoringInput {
 export interface HeadlineEvaluationResult {
   breakdown: HeadlineScoreBreakdown;
   newTotalScore: number;
+  /** leaderboard entries, each carrying that player's recomputed planet panel */
   leaderboard: PlayerScoreEntry[];
-  updatedPriorityPlanet: PlanetId | null;
 }

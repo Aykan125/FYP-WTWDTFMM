@@ -100,6 +100,7 @@ async function fetchHeadlinesInRange(
     FROM game_session_headlines h
     JOIN session_players p ON h.player_id = p.id
     WHERE h.session_id = $1 AND h.round_no BETWEEN $2 AND $3
+      AND p.is_system = FALSE
     ORDER BY h.created_at ASC`,
     [sessionId, fromRound, toRound]
   );
@@ -246,11 +247,13 @@ async function fetchAllHeadlinesForNarrative(
 ): Promise<Array<{ date: string; headline: string }>> {
   const result = await pool.query(
     `SELECT
-      to_char(in_game_submitted_at, 'YYYY-MM') as date,
-      COALESCE(selected_headline, headline_text) as headline
-    FROM game_session_headlines
-    WHERE session_id = $1 AND in_game_submitted_at IS NOT NULL
-    ORDER BY in_game_submitted_at ASC`,
+      to_char(h.in_game_submitted_at, 'YYYY-MM') as date,
+      COALESCE(h.selected_headline, h.headline_text) as headline
+    FROM game_session_headlines h
+    JOIN session_players p ON h.player_id = p.id
+    WHERE h.session_id = $1 AND h.in_game_submitted_at IS NOT NULL
+      AND p.is_system = FALSE
+    ORDER BY h.in_game_submitted_at ASC`,
     [sessionId]
   );
   return result.rows.map((row) => ({

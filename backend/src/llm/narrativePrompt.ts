@@ -33,7 +33,7 @@ export const narrativeJsonSchema: JsonSchemaDefinition = {
             },
             story: {
               type: 'string',
-              description: '500-1000 word first-person experience report',
+              description: '375-750 word first-person experience report',
             },
             themes_touched: {
               type: 'array',
@@ -62,7 +62,7 @@ Each experience report should:
 - Feel grounded and human, not grand or speeches-y
 - Avoid game language: never mention headlines, rounds, players, scores, planets, or submissions
 
-Each report should be 500-1000 words. Together they should illuminate different facets of this era: different classes, professions, geographies, eras, emotional stakes, and angles. Do not repeat the same kind of character or viewpoint across reports.
+Each report should be 375-750 words. Together they should illuminate different facets of this era: different classes, professions, geographies, eras, emotional stakes, and angles. Do not repeat the same kind of character or viewpoint across reports.
 
 The characters should feel real. Show them noticing specific events, reacting to them, being changed by them. The headlines are their lived reality. Do not simply list events — make them part of lives being lived.
 
@@ -80,5 +80,5 @@ export function buildNarrativePrompt(input: NarrativePromptInput): string {
 ${timelineText}
 
 === YOUR TASK ===
-Write 3 first-person experience reports, each 500-1000 words, from different characters living through this period. Together they should illustrate multiple facets of what happened (e.g. different jobs, classes, countries, eras, emotional stakes — pick whatever contrasts feel most illuminating). Each character should notice specific events as they happen to them personally. End each report with a brief reflection on how the world changed them.`;
+Write 3 first-person experience reports, each 375-750 words, from different characters living through this period. Together they should illustrate multiple facets of what happened (e.g. different jobs, classes, countries, eras, emotional stakes — pick whatever contrasts feel most illuminating). Each character should notice specific events as they happen to them personally. End each report with a brief reflection on how the world changed them.`;
 }

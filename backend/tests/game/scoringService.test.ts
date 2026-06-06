@@ -7,7 +7,6 @@ import {
   applyHeadlineEvaluation,
   getLeaderboard,
   getHeadlineScoreBreakdown,
-  getPlayerPlanetState,
 } from '../../src/game/scoringService';
 import { HeadlineEvaluationPayload } from '../../src/game/scoringTypes';
 
@@ -65,27 +64,24 @@ describe('Scoring Service', () => {
       total_headline_score: null,
     };
 
-    const setupSuccessfulTransaction = () => {
+    // query sequence: BEGIN, load player, load headline, SELECT usage FOR UPDATE,
+    // update headline, update player, update game_sessions usage, leaderboard, COMMIT
+    const setupSuccessfulTransaction = (globalUsage: Record<string, number> = {}) => {
       mockClient.query
-        // BEGIN
-        .mockResolvedValueOnce({})
-        // Load player
-        .mockResolvedValueOnce({ rows: [mockPlayer] })
-        // Load headline
-        .mockResolvedValueOnce({ rows: [mockHeadline] })
-        // Update headline
-        .mockResolvedValueOnce({})
-        // Update player
-        .mockResolvedValueOnce({})
-        // Get leaderboard
+        .mockResolvedValueOnce({}) // BEGIN
+        .mockResolvedValueOnce({ rows: [mockPlayer] }) // Load player
+        .mockResolvedValueOnce({ rows: [mockHeadline] }) // Load headline
+        .mockResolvedValueOnce({ rows: [{ planet_usage_global: globalUsage }] }) // SELECT usage FOR UPDATE
+        .mockResolvedValueOnce({}) // Update headline
+        .mockResolvedValueOnce({}) // Update player total_score
+        .mockResolvedValueOnce({}) // Update game_sessions planet_usage_global
         .mockResolvedValueOnce({
           rows: [
-            { id: 'player-456', nickname: 'TestPlayer', total_score: 108 },
-            { id: 'player-other', nickname: 'OtherPlayer', total_score: 30 },
+            { id: 'player-456', nickname: 'TestPlayer', total_score: 108, planet_usage_state: null },
+            { id: 'player-other', nickname: 'OtherPlayer', total_score: 30, planet_usage_state: null },
           ],
-        })
-        // COMMIT
-        .mockResolvedValueOnce({});
+        }) // leaderboard
+        .mockResolvedValueOnce({}); // COMMIT
     };
 
     it('should successfully score a headline and update player total', async () => {
@@ -99,46 +95,55 @@ describe('Scoring Service', () => {
       expect(result.breakdown.connectionScore).toBe(9); // 3 unique others = 9 pts
       expect(result.breakdown.selfStory).toBe(0); // Deprecated
       expect(result.breakdown.othersStory).toBe(0); // Deprecated
-      // Planet bonus: With null state, initializes fresh tally with random priority
-      // Priority planet could be any of the 8 planets, and it may or may not match AI rankings
-      // In tally system: 0 or 2 (flat bonus if matches top-3, else 0)
-      expect([0, 2]).toContain(result.breakdown.planetBonus);
-      // Total: 1 + 2 + 9 + (0 or 2) = 12 or 14
-      expect([12, 14]).toContain(result.breakdown.total);
+      // Planet bonus: all usage is 0, so the primary planet (MARS) lands in a random
+      // band determined by the player's random ordinals -> 0, 1, or 2.
+      expect([0, 1, 2]).toContain(result.breakdown.planetBonus);
+      // Total: 1 + 2 + 9 + (0|1|2) = 12, 13, or 14
+      expect([12, 13, 14]).toContain(result.breakdown.total);
 
       // Check new total
-      expect([50 + 12, 50 + 14]).toContain(result.newTotalScore);
+      expect([62, 63, 64]).toContain(result.newTotalScore);
 
       // Check leaderboard
       expect(result.leaderboard).toHaveLength(2);
       expect(result.leaderboard[0].rank).toBe(1);
       expect(result.leaderboard[0].nickname).toBe('TestPlayer');
+      // each leaderboard entry carries its recomputed planet panel
+      expect(result.leaderboard[0].planetPanel).toHaveLength(9);
     });
 
-    it('should use existing planet tally state from player', async () => {
-      // New tally-based format with currentPriority set to VENUS
-      const playerWithState = {
+    it('should award the +2 band bonus when the primary planet is least used', async () => {
+      // player has an explicit ordinal permutation (so ordering is deterministic)
+      const playerWithOrdinals = {
         ...mockPlayer,
         planet_usage_state: {
-          tally: { MARS: 5, VENUS: 0, EARTH: 3 },
-          previousPriority: null,
-          currentPriority: 'VENUS', // VENUS is current priority, should match
+          ordinals: {
+            MERCURY: 0, VENUS: 1, EARTH: 2, MARS: 3, JUPITER: 4,
+            SATURN: 5, URANUS: 6, NEPTUNE: 7, PLUTO: 8,
+          },
         },
+      };
+
+      // MARS (the primary planet) has the lowest usage -> top band (+2)
+      const globalUsage = {
+        MARS: 0, VENUS: 10, EARTH: 10, MERCURY: 10, JUPITER: 10,
+        SATURN: 10, URANUS: 10, NEPTUNE: 10, PLUTO: 10,
       };
 
       mockClient.query
         .mockResolvedValueOnce({}) // BEGIN
-        .mockResolvedValueOnce({ rows: [playerWithState] }) // Load player
+        .mockResolvedValueOnce({ rows: [playerWithOrdinals] }) // Load player
         .mockResolvedValueOnce({ rows: [mockHeadline] }) // Load headline
+        .mockResolvedValueOnce({ rows: [{ planet_usage_global: globalUsage }] }) // SELECT usage FOR UPDATE
         .mockResolvedValueOnce({}) // Update headline
         .mockResolvedValueOnce({}) // Update player
-        .mockResolvedValueOnce({ rows: [{ id: 'player-456', nickname: 'Test', total_score: 100 }] })
+        .mockResolvedValueOnce({}) // Update game_sessions usage
+        .mockResolvedValueOnce({ rows: [{ id: 'player-456', nickname: 'Test', total_score: 100, planet_usage_state: null }] })
         .mockResolvedValueOnce({}); // COMMIT
 
       const result = await applyHeadlineEvaluation(basePayload);
 
-      // VENUS is current priority and is in AI rankings at #2
-      // Flat +2 bonus for any match in top-3
+      // MARS is the least-used planet -> top band -> +2
       expect(result.breakdown.planetBonus).toBe(2);
       // Total: 1 (baseline) + 2 (plausibility) + 9 (3 unique others) + 2 (planet) = 14
       expect(result.breakdown.total).toBe(14);
@@ -268,10 +273,10 @@ describe('Scoring Service', () => {
       expect(params).toContain('MARS'); // planet_1
       expect(params).toContain('VENUS'); // planet_2
       expect(params).toContain('EARTH'); // planet_3
-      // Planet bonus is 0 or 2 (flat bonus in tally system)
-      expect(params.some((p: unknown) => p === 0 || p === 2)).toBe(true);
-      // Total: 1 + 2 + 9 + (0 or 2) = 12 or 14
-      expect(params.some((p: unknown) => p === 12 || p === 14)).toBe(true);
+      // Planet bonus is the primary planet's band: 0, 1, or 2
+      expect(params.some((p: unknown) => p === 0 || p === 1 || p === 2)).toBe(true);
+      // Total: 1 + 2 + 9 + (0|1|2) = 12, 13, or 14
+      expect(params.some((p: unknown) => p === 12 || p === 13 || p === 14)).toBe(true);
     });
   });
 
@@ -357,69 +362,6 @@ describe('Scoring Service', () => {
 
       const breakdown = await getHeadlineScoreBreakdown('nonexistent');
       expect(breakdown).toBeNull();
-    });
-  });
-
-  describe('getPlayerPlanetState', () => {
-    it('should return migrated player planet state from database', async () => {
-      // New tally-based format
-      const mockState = {
-        tally: { MARS: 2, VENUS: 0, EARTH: 1 },
-        previousPriority: 'MARS',
-        currentPriority: 'VENUS',
-      };
-
-      (pool.query as jest.Mock).mockResolvedValueOnce({
-        rows: [{ planet_usage_state: mockState }],
-      });
-
-      const state = await getPlayerPlanetState('player-123');
-      expect(state.tally['MARS']).toBe(2);
-      expect(state.tally['VENUS']).toBe(0);
-      expect(state.currentPriority).toBe('VENUS');
-    });
-
-    it('should migrate legacy LRU state to tally state', async () => {
-      // Legacy LRU format
-      const legacyState = {
-        MARS: { lastUsedRound: 2 },
-        VENUS: { lastUsedRound: null },
-      };
-
-      (pool.query as jest.Mock).mockResolvedValueOnce({
-        rows: [{ planet_usage_state: legacyState }],
-      });
-
-      const state = await getPlayerPlanetState('player-123');
-
-      // Should be migrated to tally format
-      expect(state.tally).toBeDefined();
-      expect(state.tally['MARS']).toBe(0); // All start at 0 in migration
-      expect(state.previousPriority).toBeNull();
-      expect(state.currentPriority).toBeNull();
-    });
-
-    it('should return initialized state for player with null state', async () => {
-      (pool.query as jest.Mock).mockResolvedValueOnce({
-        rows: [{ planet_usage_state: null }],
-      });
-
-      const state = await getPlayerPlanetState('player-123');
-
-      // Should be initialized with default planets in tally format
-      expect(state.tally).toBeDefined();
-      expect(Object.keys(state.tally).length).toBeGreaterThan(0);
-      expect(state.tally['MARS']).toBe(0);
-      expect(state.previousPriority).toBeNull();
-      expect(state.currentPriority).toBeNull();
-    });
-
-    it('should return initialized state for non-existent player', async () => {
-      (pool.query as jest.Mock).mockResolvedValueOnce({ rows: [] });
-
-      const state = await getPlayerPlanetState('nonexistent');
-      expect(state.tally).toBeDefined();
-      expect(Object.keys(state.tally).length).toBeGreaterThan(0);
     });
   });
 });

@@ -5,7 +5,8 @@ import {
   GameSessionRuntimeState,
 } from './types.js';
 import { Server } from 'socket.io';
-import { migratePlanetState } from './planetWeighting.js';
+import { migrateGlobalUsage, migratePlayerOrdinals, computePlanetPanel } from './planetUsage.js';
+import { computeInGameNow } from './inGameTime.js';
 import { DEFAULT_PLANETS } from './scoringTypes.js';
 import { generateRoundSummary, generateFinalNarrativeSummary } from './summaryService.js';
 import { getPlayerScoreBreakdowns } from './scoringService.js';
@@ -358,6 +359,7 @@ class GameLoopInstance {
         s.phase_ends_at,
         s.in_game_start_at,
         s.timeline_speed_ratio,
+        s.planet_usage_global,
         CURRENT_TIMESTAMP as server_now,
         json_agg(
           json_build_object(
@@ -387,22 +389,21 @@ class GameLoopInstance {
     const serverNow = new Date(session.server_now);
 
     // compute in-game time
-    let inGameNow: Date | null = null;
-    if (session.in_game_start_at && session.phase_started_at) {
-      const inGameStart = new Date(session.in_game_start_at);
-      const phaseStart = new Date(session.phase_started_at);
-      const realElapsed = serverNow.getTime() - phaseStart.getTime();
-      const inGameElapsed = realElapsed * session.timeline_speed_ratio;
-      inGameNow = new Date(inGameStart.getTime() + inGameElapsed);
-    }
+    const inGameNow = computeInGameNow(
+      session.in_game_start_at,
+      session.phase_started_at,
+      session.phase_ends_at,
+      serverNow,
+      session.timeline_speed_ratio
+    );
 
     const breakdowns = await getPlayerScoreBreakdowns(this.state.sessionId);
+    const globalUsage = migrateGlobalUsage(session.planet_usage_global, DEFAULT_PLANETS);
 
-    // extract currentPriority from each player's planet state
+    // build each player's usage-ranked planet panel
     const processedPlayers = session.players
       .filter((p: any) => p.id !== null)
       .map((p: any) => {
-        const planetState = migratePlanetState(p.planetUsageState, DEFAULT_PLANETS);
         const bd = breakdowns.get(p.id);
         return {
           id: p.id,
@@ -410,7 +411,11 @@ class GameLoopInstance {
           isHost: p.isHost,
           joinedAt: p.joinedAt,
           totalScore: p.totalScore ?? 0,
-          priorityPlanet: planetState.currentPriority,
+          planetPanel: computePlanetPanel(
+            globalUsage,
+            migratePlayerOrdinals(p.planetUsageState, DEFAULT_PLANETS),
+            DEFAULT_PLANETS
+          ),
           scoreBreakdown: bd ?? { baseline: 0, plausibility: 0, connection: 0, planetBonus: 0 },
         };
       });
