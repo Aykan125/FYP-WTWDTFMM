@@ -5,6 +5,7 @@
 import { Server, Socket } from 'socket.io';
 import pool from '../../src/db/pool';
 import { setupLobbyHandlers, clearSessionRateLimits } from '../../src/socket/lobbyHandlers';
+import { SEED_HEADLINES } from '../../src/game/seedHeadlines';
 
 // Mock dependencies
 jest.mock('../../src/db/pool', () => ({
@@ -190,6 +191,13 @@ describe('Headline Handlers', () => {
 
       // Verify broadcast was called
       expect(mockIO.to).toHaveBeenCalledWith('session:ABC123');
+
+      // the juror context fetch is windowed to the most recent N headlines (= seed count)
+      const fetchCall = (pool.query as jest.Mock).mock.calls.find(
+        (c) => typeof c[0] === 'string' && c[0].includes('ORDER BY created_at DESC')
+      );
+      expect(fetchCall).toBeDefined();
+      expect(fetchCall![1][1]).toBe(SEED_HEADLINES.length);
     });
 
     it('should reject when headline is empty', async () => {

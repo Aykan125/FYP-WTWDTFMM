@@ -17,11 +17,17 @@ import {
 } from '../game/planetUsage.js';
 import { getRoundSummary, getSessionIdFromJoinCode } from '../game/summaryService.js';
 import { computeInGameNow } from '../game/inGameTime.js';
+import { SEED_HEADLINES } from '../game/seedHeadlines.js';
 
 
 // rate limiting: track last submission time per player.
 // key: `${sessionId}:${playerId}`, value: timestamp in ms
 const lastHeadlineSubmission: Map<string, number> = new Map();
+
+// the juror only sees the most recent N headlines (rolling window) when judging
+// plausibility, linking connections, and drafting variations. N = the number of
+// archive/seed headlines, so old context drops off as the timeline grows.
+const JUROR_HISTORY_WINDOW = SEED_HEADLINES.length;
 
 // in test mode (GAME_TEST_MODE=true), the cooldown is scaled to ~6s
 // to match the compressed game timing in gameLoop.ts.
@@ -565,13 +571,18 @@ export function setupLobbyHandlers(io: Server): void {
           return;
         }
 
-        // fetch existing headlines for context
+        // fetch the most recent N headlines for juror context (rolling window),
+        // then restore chronological order so the prompt reads oldest -> newest
         const existingHeadlinesResult = await pool.query(
-          `SELECT id, COALESCE(selected_headline, headline_text) as text
-           FROM game_session_headlines
-           WHERE session_id = $1
+          `SELECT id, text FROM (
+             SELECT id, COALESCE(selected_headline, headline_text) AS text, created_at
+             FROM game_session_headlines
+             WHERE session_id = $1
+             ORDER BY created_at DESC
+             LIMIT $2
+           ) recent
            ORDER BY created_at ASC`,
-          [sessionState.id]
+          [sessionState.id, JUROR_HISTORY_WINDOW]
         );
         const headlinesList: HeadlineEntry[] = existingHeadlinesResult.rows.map((row) => ({
           id: row.id,
