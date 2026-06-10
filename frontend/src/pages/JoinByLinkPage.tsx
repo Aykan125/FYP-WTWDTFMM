@@ -33,7 +33,7 @@ export function JoinByLinkPage({ connected, loading, error, onJoinSession }: Joi
     <div className="h-[100dvh] overflow-hidden bg-gradient-to-b from-gray-50 to-gray-100/80 flex items-center justify-center p-4">
       <div className="max-w-sm w-full space-y-6">
         <div className="text-center space-y-1">
-          <h1 className="text-4xl font-bold text-gray-900">Future Headlines</h1>
+          <h1 className="text-4xl font-bold text-gray-900">Whom the Gods 2.0</h1>
           <p className="text-sm text-gray-500">You've been invited to join a game</p>
         </div>
 

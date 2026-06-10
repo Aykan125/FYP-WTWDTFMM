@@ -32,11 +32,13 @@ export function PlanetUsagePanel({ panel }: PlanetUsagePanelProps) {
           const band = BAND_META[entry.band] ?? BAND_META[0];
           // band-group header before the first planet of each band
           const showHeader = i === 0 || panel[i - 1].band !== entry.band;
+          // separate the +2 / +1 / +0 blocks with whitespace + a divider
+          const newBandBreak = showHeader && i !== 0;
 
           return (
-            <div key={entry.id}>
+            <div key={entry.id} className={newBandBreak ? 'mt-3 pt-3 border-t border-gray-200' : ''}>
               {showHeader && (
-                <div className="flex items-center gap-1.5 pt-2 pb-0.5 first:pt-0">
+                <div className="flex items-center gap-1.5 pb-0.5">
                   <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${band.pill}`}>
                     {band.points}
                   </span>

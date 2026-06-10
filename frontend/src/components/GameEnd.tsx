@@ -187,6 +187,13 @@ export function GameEnd({
         }
       }
 
+      // credit footer
+      y += 8;
+      writeText('Whom the Gods 2.0  -  created by Lewis Griffin & Ayman Arif Khan', 9, {
+        italic: true,
+        color: [140, 140, 140],
+      });
+
       const date = new Date().toISOString().slice(0, 10);
       pdf.save(`future-headlines-${joinCode}-${date}.pdf`);
     } catch (err) {
@@ -297,7 +304,7 @@ export function GameEnd({
           </Card>
         </div>
 
-        <div className="flex justify-center gap-3 pb-8 pt-6">
+        <div className="flex justify-center gap-3 pt-6">
           <Button
             variant="primary"
             onClick={handleDownloadPdf}
@@ -309,6 +316,10 @@ export function GameEnd({
             Leave game
           </Button>
         </div>
+
+        <p className="text-center text-xs text-gray-400 pt-8 pb-8">
+          Whom the Gods 2.0 &middot; created by Lewis Griffin &amp; Ayman Arif Khan
+        </p>
       </div>
     </main>
   );
