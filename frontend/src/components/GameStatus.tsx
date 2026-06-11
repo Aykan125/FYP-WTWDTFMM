@@ -26,7 +26,7 @@ export function GameStatus({
       case 'PLAYING':
         return { text: 'Playing', variant: 'green' as const };
       case 'TUTORIAL':
-        return { text: 'Tutorial', variant: 'yellow' as const };
+        return { text: 'Prologue', variant: 'yellow' as const };
       case 'BREAK':
         return { text: 'Break', variant: 'blue' as const };
       case 'FINISHED':
